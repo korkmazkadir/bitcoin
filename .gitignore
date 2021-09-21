@@ -13,3 +13,18 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+**/*
+!**/*.go
+!**/
+!**/*.json
+
+!**/*.yml
+!**/*.sh
+!hosts
+!*.Rmd
+
+*.retry
+scripts/artifacts/*
+scripts/artifacts/config.json
+

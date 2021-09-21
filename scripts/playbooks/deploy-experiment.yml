@@ -1,0 +1,26 @@
+---
+# The playbook uploads experiment artifacts to remote machines
+
+- hosts: registry
+  tasks:
+    - name: killing registery
+      shell: 
+        cmd: pkill registery || /bin/true
+
+    - name: Remove file /root/rapidchain/end-of-experiment
+      ansible.builtin.file:
+        path: /root/rapidchain/end-of-experiment
+        state: absent
+
+    - name: deploying registery service
+      shell: cd ~/rapidchain; nohup ./registery > registery.log 2>&1 &
+
+
+- hosts: all
+  tasks:
+    - name: killing nodes
+      shell: 
+        cmd: pkill node || /bin/true
+
+    - name: deploying nodes
+      shell: cd ~/rapidchain; ./deploy-nodes.sh 25 "{{ groups['registry'][0] }}:1234" eno1
