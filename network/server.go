@@ -13,16 +13,9 @@ func NewServer(demux *common.Demux) *P2PServer {
 	return server
 }
 
-func (s *P2PServer) HandleBlockChunk(chunk *common.BlockChunk, reply *int) error {
+func (s *P2PServer) HandleBlock(block *common.Block, reply *int) error {
 
-	s.demux.EnqueBlockChunk(*chunk)
-
-	return nil
-}
-
-func (s *P2PServer) HandleVote(vote *common.Vote, reply *int) error {
-
-	s.demux.EnqueVote(*vote)
+	s.demux.EnqueBlock(*block)
 
 	return nil
 }

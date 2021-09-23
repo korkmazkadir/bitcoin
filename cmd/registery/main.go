@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/rpc"
 
-	"github.com/korkmazkadir/rapidchain/registery"
+	"github.com/korkmazkadir/bitcoin/registery"
 )
 
 const configFile = "config.json"

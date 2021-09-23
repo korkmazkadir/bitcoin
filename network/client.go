@@ -14,8 +14,7 @@ type P2PClient struct {
 
 	rpcClient *rpc.Client
 
-	blockChunks chan common.BlockChunk
-	votes       chan common.Vote
+	blockChan chan common.Block
 
 	err error
 }
@@ -33,8 +32,7 @@ func NewClient(IPAddress string, portNumber int) (*P2PClient, error) {
 	client.portNumber = portNumber
 	client.rpcClient = rpcClient
 
-	client.blockChunks = make(chan common.BlockChunk, 1024)
-	client.votes = make(chan common.Vote, 1024)
+	client.blockChan = make(chan common.Block, 1024)
 
 	return client, nil
 }
@@ -46,15 +44,9 @@ func (c *P2PClient) Start() {
 }
 
 // SendBlockChunk enques a chunk of a block to send
-func (c *P2PClient) SendBlockChunk(chunk common.BlockChunk) {
+func (c *P2PClient) SendBlock(block common.Block) {
 
-	c.blockChunks <- chunk
-}
-
-// SendVote enques a vote to send
-func (c *P2PClient) SendVote(vote common.Vote) {
-
-	c.votes <- vote
+	c.blockChan <- block
 }
 
 func (c *P2PClient) mainLoop() {
@@ -62,11 +54,8 @@ func (c *P2PClient) mainLoop() {
 	for {
 		select {
 
-		case vote := <-c.votes:
-			go c.rpcClient.Call("P2PServer.HandleVote", vote, nil)
-
-		case blockChunk := <-c.blockChunks:
-			go c.rpcClient.Call("P2PServer.HandleBlockChunk", blockChunk, nil)
+		case block := <-c.blockChan:
+			go c.rpcClient.Call("P2PServer.HandleBlock", block, nil)
 
 		}
 	}
