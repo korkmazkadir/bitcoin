@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/korkmazkadir/rapidchain/registery"
+	"github.com/korkmazkadir/bitcoin/registery"
 )
 
 const configFile = "config.json"
