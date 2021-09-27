@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/korkmazkadir/bitcoin/common"
 )
@@ -14,7 +14,6 @@ type Ledger struct {
 	readyToDisseminate chan common.Block
 }
 
-//TODO: create genesisblocks in a determinicstic way
 // NewLedger creates, and initialize a leader, returns a pointer to it
 func NewLedger(concurrencyLevel int) *Ledger {
 	ledger := &Ledger{
@@ -22,6 +21,10 @@ func NewLedger(concurrencyLevel int) *Ledger {
 		blockMap:           make(map[int][]common.Block),
 		readyToDisseminate: make(chan common.Block, 1024),
 	}
+
+	// initiates the genesis block
+	ledger.blockMap[0] = []common.Block{{Issuer: []byte("initial block"), Height: 0, Nonce: 12123423423435, Payload: []byte("hello world")}}
+
 	return ledger
 }
 
@@ -32,7 +35,7 @@ func (l *Ledger) AppendBlock(block common.Block) {
 
 	// could not append the block so nothing todo
 	if !appendResult {
-
+		log.Printf("putting a block to the waiting list. Block height is %d\n", block.Height)
 		l.waitList = append(l.waitList, block)
 		return
 	}
@@ -50,57 +53,57 @@ func (l *Ledger) AppendBlock(block common.Block) {
 
 }
 
-// IsBlockMined returns true if all the microblocks for a specific height are available otherwose returns false
-func (l *Ledger) IsBlockMined(height int) bool {
+// GetMinedBlock returns true with a  list of microblocks if all the microblocks for a specific height are available otherwise returns false
+func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 
 	heightBlocks, ok := l.blockMap[height]
 
-	// there is no block so return false
-	if !ok {
-		return false
+	// returns the genesis block
+	if height == 0 {
+		if len(heightBlocks) != 1 {
+			panic("no genesis block")
+		}
+
+		return heightBlocks, true
 	}
 
+	// there is no block so return false
+	if !ok {
+		return []common.Block{}, false
+	}
+
+	blocks := make([]common.Block, l.concurrencyLevel)
 	microblockIndexes := make([]bool, l.concurrencyLevel)
 	for _, block := range heightBlocks {
 		microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] = true
+		blocks[block.Nonce%int64(l.concurrencyLevel)] = block
 	}
 
 	for _, isMicroBlockAvailable := range microblockIndexes {
 		if !isMicroBlockAvailable {
-			return false
+			return []common.Block{}, false
 		}
 	}
 
-	return true
+	return blocks, true
 }
 
-// BlockHashesToMine returns block hash to mine on top of them
-func (l *Ledger) BlockHashesToMine(height int) [][]byte {
+func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, bool) {
 
 	heightBlocks, ok := l.blockMap[height]
+
 	// there is no block so return false
 	if !ok {
-		panic(fmt.Errorf("there are no blocks to mine on top of"))
+		return common.Block{}, false
 	}
 
-	microblockHashes := make([][]byte, l.concurrencyLevel)
-	blockHashCount := 0
-
 	for _, block := range heightBlocks {
-
-		microBlockIndex := block.Nonce % int64(l.concurrencyLevel)
-
-		if len(microblockHashes[microBlockIndex]) == 0 {
-			microblockHashes[microBlockIndex] = block.Hash()
-			blockHashCount++
+		if (block.Nonce % int64(l.concurrencyLevel)) == int64(macroblockIndex) {
+			return block, true
 		}
 	}
 
-	if blockHashCount != l.concurrencyLevel {
-		panic(fmt.Errorf("there are missing microblocks"))
-	}
-
-	return microblockHashes
+	return common.Block{}, false
 }
 
 func (l *Ledger) append(block common.Block) bool {

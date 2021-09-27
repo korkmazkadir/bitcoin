@@ -15,6 +15,8 @@ type Block struct {
 
 	Nonce int64
 
+	Signature []byte
+
 	Payload []byte
 }
 
@@ -22,7 +24,7 @@ type Block struct {
 // It considers all fields of a Block.
 func (b Block) Hash() []byte {
 
-	str := fmt.Sprintf("%x,%x,%d,%x", b.Issuer, b.PrevBlockHashes, b.Height, b.Payload)
+	str := fmt.Sprintf("%x,%x,%d,%d,%x", b.Issuer, b.PrevBlockHashes, b.Height, b.Nonce, b.Payload)
 	h := sha256.New()
 	_, err := h.Write([]byte(str))
 	if err != nil {

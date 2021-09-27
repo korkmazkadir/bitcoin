@@ -69,7 +69,7 @@ func main() {
 	statLogger := common.NewStatLogger(nodeInfo.ID)
 	bitcoin := consensus.NewBitcoin(demux, nodeConfig, peerSet, statLogger)
 
-	runConsensus(rapidchain, nodeConfig.EndRound, nodeInfo.ID, nodeConfig.NodeCount, nodeConfig.LeaderCount, nodeConfig.BlockSize, nodeList)
+	runConsensus(bitcoin, nodeConfig.EndRound, nodeConfig.NodeCount, nodeConfig.LeaderCount, nodeConfig.BlockSize)
 
 	// collects stats abd uploads to registry
 	log.Printf("uploading stats to the registry\n")
@@ -83,53 +83,52 @@ func main() {
 	log.Printf("exiting as expected...\n")
 }
 
-func runConsensus(rc *consensus.RapidchainConsensus, numberOfRounds int, nodeID int, nodeCount int, leaderCount int, blockSize int, nodeList []registery.NodeInfo) {
+func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount int, leaderCount int, blockSize int) {
 
 	time.Sleep(5 * time.Second)
 	log.Println("Consensus started")
 
-	// genesis block
-	previousBlock := []common.Block{{Issuer: []byte("initial block"), Round: 0, Payload: []byte("hello world")}}
+	// previous block is set to genesis block
+	previousBlock, _ := bitcoinPP.GetMacroBlock(0)
 
 	currentRound := 1
 	for currentRound <= numberOfRounds {
 
 		log.Printf("+++++++++ Round %d +++++++++++++++\n", currentRound)
 
-		var block []common.Block
-
-		if isElectedAsLeader(nodeList, currentRound, nodeID, leaderCount) {
-			log.Println("elected as leader")
-			b := createBlock(currentRound, nodeID, hashBlock(previousBlock), blockSize, leaderCount)
-
-			block = rc.Propose(currentRound, b, hashBlock(previousBlock))
-
-		} else {
-
-			block = rc.Decide(currentRound, hashBlock(previousBlock))
-
-		}
+		block := createBlock(currentRound, hashMacroblock(previousBlock), blockSize, leaderCount)
+		minedBlock := bitcoinPP.MineBlock(block)
 
 		payloadSize := 0
-		for i := range block {
-			payloadSize += len(block[i].Payload)
+		for i := range minedBlock {
+			payloadSize += len(minedBlock[i].Payload)
 		}
 
 		log.Printf("appended payload size is %d bytes\n", payloadSize)
 
-		previousBlock = block
+		previousBlock = minedBlock
 		//log.Printf("decided block hash %x\n", encodeBase64(block.Hash()[:15]))
 
 		currentRound++
 		//time.Sleep(2 * time.Second)
 
-		log.Printf("Appended block: %x\n", encodeBase64(hashBlock(block)[:15]))
+		log.Printf("Appended block: %x\n", encodeBase64(singleBlockHash(minedBlock)[:15]))
 
 	}
 
 }
 
-func hashBlock(blocks []common.Block) []byte {
+func hashMacroblock(blocks []common.Block) [][]byte {
+	var hashes [][]byte
+
+	for _, b := range blocks {
+		hashes = append(hashes, b.Hash())
+	}
+
+	return hashes
+}
+
+func singleBlockHash(blocks []common.Block) []byte {
 
 	if len(blocks) == 1 {
 		return blocks[0].Hash()

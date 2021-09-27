@@ -60,31 +60,8 @@ func getNodeInfo(netAddress string) registery.NodeInfo {
 	return registery.NodeInfo{IPAddress: ipAddress, PortNumber: portNumber}
 }
 
-func createBlock(round int, nodeID int, previousBlockHashes [][]byte, blockSize int, leaderCount int) common.Block {
-
-	payloadSize := int(math.Ceil(float64(blockSize) / float64(leaderCount)))
-
-	block := common.Block{
-		Height:          round,
-		Issuer:          []byte{byte(nodeID)},
-		Payload:         getRandomByteSlice(payloadSize),
-		PrevBlockHashes: previousBlockHashes,
-	}
-
-	return block
-}
-
 func encodeBase64(hex []byte) string {
 	return base64.StdEncoding.EncodeToString([]byte(hex))
-}
-
-func getRandomByteSlice(size int) []byte {
-	data := make([]byte, size)
-	_, err := rand.Read(data)
-	if err != nil {
-		panic(err)
-	}
-	return data
 }
 
 func getEnvWithDefault(key string, defaultValue string) string {
@@ -116,4 +93,26 @@ func isElectedAsLeader(nodeList []registery.NodeInfo, round int, nodeID int, lea
 	log.Printf("Elected leaders: %v\n", electedLeaders)
 
 	return false
+}
+
+func createBlock(round int, previousBlockHashes [][]byte, blockSize int, leaderCount int) common.Block {
+
+	payloadSize := int(math.Ceil(float64(blockSize) / float64(leaderCount)))
+
+	block := common.Block{
+		Height:          round,
+		Payload:         getRandomByteSlice(payloadSize),
+		PrevBlockHashes: previousBlockHashes,
+	}
+
+	return block
+}
+
+func getRandomByteSlice(size int) []byte {
+	data := make([]byte, size)
+	_, err := rand.Read(data)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
