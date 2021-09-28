@@ -78,7 +78,9 @@ func main() {
 	registry.UploadStats(statList)
 
 	log.Printf("reached target round count. Shutting down in 5 minute\n")
-	time.Sleep(5 * time.Minute)
+	time.Sleep(1 * time.Minute)
+
+	bitcoin.PrintLedgerStatus()
 
 	log.Printf("exiting as expected...\n")
 }
@@ -104,7 +106,7 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 			payloadSize += len(minedBlock[i].Payload)
 		}
 
-		log.Printf("appended payload size is %d bytes\n", payloadSize)
+		log.Printf("Appended payload size is %d bytes\n", payloadSize)
 
 		previousBlock = minedBlock
 		//log.Printf("decided block hash %x\n", encodeBase64(block.Hash()[:15]))
@@ -112,7 +114,8 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 		currentRound++
 		//time.Sleep(2 * time.Second)
 
-		log.Printf("Appended block: %x\n", encodeBase64(singleBlockHash(minedBlock)[:15]))
+		//log.Printf("Appended block: %x\n", encodeBase64(singleBlockHash(minedBlock)[:15]))
+		log.Printf("Appended block: %x\n", singleBlockHash(minedBlock))
 
 	}
 

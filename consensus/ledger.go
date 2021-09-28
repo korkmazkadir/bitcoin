@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/korkmazkadir/bitcoin/common"
@@ -51,6 +52,7 @@ func (l *Ledger) AppendBlock(block common.Block) {
 		}
 	}
 
+	log.Printf("Appended:\t\t%x\n", block.Hash())
 }
 
 // GetMinedBlock returns true with a  list of microblocks if all the microblocks for a specific height are available otherwise returns false
@@ -142,4 +144,23 @@ func (l *Ledger) append(block common.Block) bool {
 	l.readyToDisseminate <- block
 
 	return true
+}
+
+func (l *Ledger) PrintStatus() {
+
+	genesisBlock, _ := l.GetMacroBlock(0)
+	status := fmt.Sprintf("[0 | %d]", len(genesisBlock))
+	for i := 1; ; i++ {
+
+		mb, ok := l.blockMap[i]
+
+		if !ok {
+			break
+		}
+
+		status = fmt.Sprintf("%s <-[%d | %d]", status, i, len(mb))
+	}
+
+	log.Println(status)
+
 }
