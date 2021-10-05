@@ -15,6 +15,9 @@ type Block struct {
 
 	Nonce int64
 
+	// contains the hashes of sibling blocks
+	Siblings [][]byte
+
 	Signature []byte
 
 	Payload []byte

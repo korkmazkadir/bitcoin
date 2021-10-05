@@ -90,6 +90,31 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 	return blocks, true
 }
 
+func (l *Ledger) GetSiblings(height int) [][]byte {
+
+	heightBlocks, _ := l.blockMap[height]
+
+	// returns the genesis block
+	if height == 0 {
+		if len(heightBlocks) != 1 {
+			panic("no genesis block")
+		}
+
+		return nil
+	}
+
+	siblingHashes := make([][]byte, l.concurrencyLevel)
+	microblockIndexes := make([]bool, l.concurrencyLevel)
+	for _, block := range heightBlocks {
+		if !microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] {
+			microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] = true
+			siblingHashes[block.Nonce%int64(l.concurrencyLevel)] = block.Hash()
+		}
+	}
+
+	return siblingHashes
+}
+
 func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, bool) {
 
 	heightBlocks, ok := l.blockMap[height]
@@ -132,10 +157,14 @@ func (l *Ledger) append(block common.Block) bool {
 		}
 	}
 
-	//TODO: validate block, and simulate the cost of validation here
-
 	// apending block top the ledger
 	currentRoundBlocks := l.blockMap[block.Height]
+	if areAllSiblingsAvailable(block.Siblings, currentRoundBlocks) == false {
+		return false
+	}
+
+	//TODO: validate block, and simulate the cost of validation here
+
 	currentRoundBlocks = append(currentRoundBlocks, block)
 	l.blockMap[block.Height] = currentRoundBlocks
 
@@ -144,6 +173,16 @@ func (l *Ledger) append(block common.Block) bool {
 	l.readyToDisseminate <- block
 
 	return true
+}
+
+func areAllSiblingsAvailable(siblings [][]byte, currentRoundBlocks []common.Block) bool {
+
+	//TODO: write the function
+	currentRoundBlockMap := make(map[string]common.Block)
+	for i := 0; i < len(currentRoundBlocks); i++ {
+		currentRoundBlockMap[string(currentRoundBlocks[i].Hash())] = currentRoundBlocks[i]
+	}
+
 }
 
 func (l *Ledger) PrintStatus() {

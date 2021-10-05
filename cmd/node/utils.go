@@ -103,6 +103,7 @@ func createBlock(round int, previousBlockHashes [][]byte, blockSize int, leaderC
 		Height:          round,
 		Payload:         getRandomByteSlice(payloadSize),
 		PrevBlockHashes: previousBlockHashes,
+		Siblings:        make([][]byte, leaderCount),
 	}
 
 	return block
