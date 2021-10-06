@@ -173,7 +173,7 @@ func (b *Bitcoin) disseminate() {
 
 func (b *Bitcoin) miningTime() <-chan time.Time {
 
-	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * 100 * 1 / (1 / float64(b.config.NodeCount)))
+	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * 20 * 1 / (1 / float64(b.config.NodeCount)))
 	log.Printf("Mining time is %d \n", simulatedMiningTime)
 	return time.After(time.Duration(simulatedMiningTime) * time.Second)
 }

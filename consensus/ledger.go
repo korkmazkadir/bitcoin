@@ -159,7 +159,7 @@ func (l *Ledger) append(block common.Block) bool {
 
 	// apending block top the ledger
 	currentRoundBlocks := l.blockMap[block.Height]
-	if areAllSiblingsAvailable(block.Siblings, currentRoundBlocks) == false {
+	if !areAllSiblingsAvailable(block, currentRoundBlocks) {
 		return false
 	}
 
@@ -175,14 +175,30 @@ func (l *Ledger) append(block common.Block) bool {
 	return true
 }
 
-func areAllSiblingsAvailable(siblings [][]byte, currentRoundBlocks []common.Block) bool {
+func areAllSiblingsAvailable(block common.Block, currentRoundBlocks []common.Block) bool {
 
-	//TODO: write the function
+	siblings := block.Siblings
+
 	currentRoundBlockMap := make(map[string]common.Block)
 	for i := 0; i < len(currentRoundBlocks); i++ {
 		currentRoundBlockMap[string(currentRoundBlocks[i].Hash())] = currentRoundBlocks[i]
 	}
 
+	for i := 0; i < len(siblings); i++ {
+		if len(siblings[i]) > 0 {
+			siblingBlock, ok := currentRoundBlockMap[string(siblings[i])]
+			if !ok {
+				return false
+			}
+
+			if block.Height != siblingBlock.Height {
+				panic("siblings height is not correct")
+			}
+
+		}
+	}
+
+	return true
 }
 
 func (l *Ledger) PrintStatus() {
