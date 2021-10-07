@@ -71,7 +71,7 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 		case blockToAppend := <-blockChan:
 
-			microBlockIndex := int(blockToAppend.Nonce % int64(b.ledger.concurrencyLevel))
+			microBlockIndex := MicroBlockIndex(blockToAppend.Nonce, blockToAppend.Siblings, b.ledger.concurrencyLevel)
 
 			log.Printf("[%d] Received:\t%x\tHeight: %d\n", microBlockIndex, blockToAppend.Hash(), blockToAppend.Height)
 
@@ -93,7 +93,8 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 		case <-miningTimeChan:
 
 			block.Nonce = produceRandomNonce()
-			microBlockIndex := b.getBlockIndex(block.Nonce)
+			microBlockIndex := MicroBlockIndex(block.Nonce, block.Siblings, b.ledger.concurrencyLevel)
+
 			_, blockAvailable := b.ledger.GetMicroblock(block.Height, microBlockIndex)
 			// appends the mined block if there is not a block mined for the specific index
 			if !blockAvailable {
@@ -157,11 +158,6 @@ func (b *Bitcoin) updateSiblings(block common.Block) bool {
 	return siblingsUpdated
 }
 
-func (b *Bitcoin) getBlockIndex(nonce int64) int {
-
-	return int(nonce % int64(b.ledger.concurrencyLevel))
-}
-
 // disseminates blocks in the background
 func (b *Bitcoin) disseminate() {
 	for {
@@ -173,7 +169,7 @@ func (b *Bitcoin) disseminate() {
 
 func (b *Bitcoin) miningTime() <-chan time.Time {
 
-	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * 20 * 1 / (1 / float64(b.config.NodeCount)))
+	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * 80 * 1 / (1 / float64(b.config.NodeCount)))
 	log.Printf("Mining time is %d \n", simulatedMiningTime)
 	return time.After(time.Duration(simulatedMiningTime) * time.Second)
 }

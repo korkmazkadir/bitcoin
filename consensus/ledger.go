@@ -77,8 +77,9 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 	blocks := make([]common.Block, l.concurrencyLevel)
 	microblockIndexes := make([]bool, l.concurrencyLevel)
 	for _, block := range heightBlocks {
-		microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] = true
-		blocks[block.Nonce%int64(l.concurrencyLevel)] = block
+		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
+		microblockIndexes[microblockIndex] = true
+		blocks[microblockIndex] = block
 	}
 
 	for _, isMicroBlockAvailable := range microblockIndexes {
@@ -92,7 +93,7 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 
 func (l *Ledger) GetSiblings(height int) [][]byte {
 
-	heightBlocks, _ := l.blockMap[height]
+	heightBlocks := l.blockMap[height]
 
 	// returns the genesis block
 	if height == 0 {
@@ -106,9 +107,10 @@ func (l *Ledger) GetSiblings(height int) [][]byte {
 	siblingHashes := make([][]byte, l.concurrencyLevel)
 	microblockIndexes := make([]bool, l.concurrencyLevel)
 	for _, block := range heightBlocks {
-		if !microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] {
-			microblockIndexes[block.Nonce%int64(l.concurrencyLevel)] = true
-			siblingHashes[block.Nonce%int64(l.concurrencyLevel)] = block.Hash()
+		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
+		if !microblockIndexes[microblockIndex] {
+			microblockIndexes[microblockIndex] = true
+			siblingHashes[microblockIndex] = block.Hash()
 		}
 	}
 
@@ -125,7 +127,8 @@ func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, b
 	}
 
 	for _, block := range heightBlocks {
-		if (block.Nonce % int64(l.concurrencyLevel)) == int64(macroblockIndex) {
+		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
+		if microblockIndex == macroblockIndex {
 			return block, true
 		}
 	}
