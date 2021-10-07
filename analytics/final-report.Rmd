@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/algo-rapid';
+      workingDir <- '/home/kadir/Desktop/bitcoin++_data_1000';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -49,7 +49,8 @@ printMeanBarChart <- function(df){
                     Median = median(ElapsedTime),
                     Mean = mean(ElapsedTime),
                     Q3 = quantile(ElapsedTime, 0.75),
-                    Max = max(ElapsedTime)
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
                   )
   
   p <- ggplot(grouped_df, aes(x=MacroBlockSize, y=Mean, group=ConcurrencyConstant, color=factor(ConcurrencyConstant))) +
@@ -84,46 +85,6 @@ endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
 result=printMeanBarChart(endOfRound)
-result$plot
-result$table
-```
-
-\newpage
-## Propose Time
-
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
-
-result=printMeanBarChart(proposedDF)
-result$plot
-result$table
-```
-
-\newpage
-## Block Receive Time
-
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
-
-result=printMeanBarChart(blockReceivedDF)
-result$plot
-result$table
-```
-
-\newpage
-## Echo Time
-
-```{r, echo=FALSE, fig.height=4,  warning=FALSE}
-
-result=printMeanBarChart(echoDF)
-result$plot
-result$table
-```
-
-\newpage
-## Accept Time
-
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
-
-result=printMeanBarChart(acceptDF)
 result$plot
 result$table
 ```

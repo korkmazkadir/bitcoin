@@ -18,12 +18,12 @@ type NodeConfig struct {
 
 	BlockSize int
 
-	BlockChunkCount int
+	MiningTime int
 }
 
 func (nc NodeConfig) Hash() []byte {
 
-	str := fmt.Sprintf("%d,%x,%d,%d,%d,%d,%d", nc.NodeCount, nc.EpochSeed, nc.EndRound, nc.GossipFanout, nc.LeaderCount, nc.BlockSize, nc.BlockChunkCount)
+	str := fmt.Sprintf("%d,%x,%d,%d,%d,%d,%d", nc.NodeCount, nc.EpochSeed, nc.EndRound, nc.GossipFanout, nc.LeaderCount, nc.BlockSize, nc.MiningTime)
 
 	h := sha256.New()
 	_, err := h.Write([]byte(str))
@@ -42,5 +42,5 @@ func (nc *NodeConfig) CopyFields(cp NodeConfig) {
 	nc.GossipFanout = cp.GossipFanout
 	nc.LeaderCount = cp.LeaderCount
 	nc.BlockSize = cp.BlockSize
-	nc.BlockChunkCount = cp.BlockChunkCount
+	nc.MiningTime = cp.MiningTime
 }
