@@ -1,0 +1,157 @@
+---
+title: "Rapidchain++ Statistics"
+author: "Kadir Korkmaz"
+date: "July 12, 2021"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/home/kadir/Desktop/stats_4';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'experiment-report.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+
+experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
+
+
+
+colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime")
+
+
+printSummaryStats <- function(df, column) {
+  summ <- df %>% summarise(min = min(column), mean= mean(column), sd= sd(column), max = max(column))
+  kable(summ)
+}
+
+printConfidenceInterval <- function(column) {
+  r <- CI(column, ci=0.95)
+  kable(r)
+}
+
+
+printMeanBarChart <- function(df){
+    
+  grouped_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+  
+  p <- ggplot(grouped_df, aes(x=BlockSize, y=Mean, group=CC, color=factor(CC))) +
+    geom_line(aes( linetype=factor(CC), color=factor(CC) ))+
+    geom_point() +
+    labs( x = "Macro Block Size (MB)", y = "Mean Elapsed Time (ms)", color = "CC", linetype="CC" )+
+    theme(legend.position="top",legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(labels = as.character(grouped_df$BlockSize), breaks = grouped_df$BlockSize)
+  
+  
+  
+  t <- kable(grouped_df, n=100)
+
+  return( list("plot" = p , "table" = t ))
+}
+
+
+calculateSummaryStats <-function(df){
+  
+    summary_stats_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+    
+    
+  return(summary_stats_df)
+}
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
+hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
+processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
+endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+
+```
+
+\newpage
+## Round Latency
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+result=printMeanBarChart(endOfRound)
+result$plot
+result$table
+```
+
+
+\newpage
+## Block Dissemination Time
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#hist(blockReceivedDF$ElapsedTime)
+ggplot(blockReceivedDF, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+kable( calculateSummaryStats(blockReceivedDF) )
+
+```
+
+
+\newpage
+## Block Hop Count
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#hist(hopCountDF$ElapsedTime)
+ggplot(hopCountDF, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+kable( calculateSummaryStats(hopCountDF) )
+
+
+```
+
+\newpage
+## Block Processing Time
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#hist(processingTimeDF$ElapsedTime)
+ggplot(processingTimeDF, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+kable( calculateSummaryStats(processingTimeDF) )
+
+blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
+
+head(blockReceivedDF_bug, n=100)
+
+
+```

@@ -15,6 +15,7 @@ func NewServer(demux *common.Demux) *P2PServer {
 
 func (s *P2PServer) HandleBlock(block *common.Block, reply *int) error {
 
+	block.SetEnqueueTime()
 	s.demux.EnqueBlock(*block)
 
 	return nil

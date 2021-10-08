@@ -3,6 +3,13 @@
 
 - hosts: registry
   tasks:
+    - name: Add or modify nofile soft limit for the user root
+      community.general.pam_limits:
+        domain: root
+        limit_type: soft
+        limit_item: nofile
+        value: -1
+
     - name: killing registery
       shell: 
         cmd: pkill registery || /bin/true
@@ -23,4 +30,4 @@
         cmd: pkill node || /bin/true
 
     - name: deploying nodes
-      shell: cd ~/rapidchain; ./deploy-nodes.sh 100 "{{ groups['registry'][0] }}:1234" eno1
+      shell: cd ~/rapidchain; ./deploy-nodes.sh 400 "{{ groups['registry'][0] }}:1234" eno1

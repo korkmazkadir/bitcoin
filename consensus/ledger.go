@@ -52,7 +52,7 @@ func (l *Ledger) AppendBlock(block common.Block) {
 		}
 	}
 
-	log.Printf("Appended:\t\t%x\n", block.Hash())
+	log.Printf("Appended:\t\t%x\n", block.Hash()[:15])
 }
 
 // GetMinedBlock returns true with a  list of microblocks if all the microblocks for a specific height are available otherwise returns false

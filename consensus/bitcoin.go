@@ -73,7 +73,14 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 			microBlockIndex := MicroBlockIndex(blockToAppend.Nonce, blockToAppend.Siblings, b.ledger.concurrencyLevel)
 
-			log.Printf("[%d] Received:\t%x\tHeight: %d\n", microBlockIndex, blockToAppend.Hash(), blockToAppend.Height)
+			disseminationTime := int(time.Now().UnixMilli() - blockToAppend.Timestamp)
+			b.statLogger.LogBlockReceived(blockToAppend.Height, disseminationTime, blockToAppend.HopCount)
+			log.Printf("[%d] Received:\t%x\tHeight: %d \tDissTime: %d ms.\tHopCount: %d\n",
+				microBlockIndex,
+				blockToAppend.Hash()[:15],
+				blockToAppend.Height,
+				disseminationTime,
+				blockToAppend.HopCount)
 
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)
@@ -94,15 +101,19 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 			block.Nonce = produceRandomNonce()
 			microBlockIndex := MicroBlockIndex(block.Nonce, block.Siblings, b.ledger.concurrencyLevel)
+			//TODO: Fix this. To call a function with pointer I did this but it seems strange
+			blockPointer := &block
+			blockPointer.SetEnqueueTime()
 
 			_, blockAvailable := b.ledger.GetMicroblock(block.Height, microBlockIndex)
 			// appends the mined block if there is not a block mined for the specific index
 			if !blockAvailable {
 				// signs the block
 				block.Signature = Sign(block.Hash(), b.privateKey)
+				block.Timestamp = time.Now().UnixMilli()
 				b.ledger.AppendBlock(block)
 
-				log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash(), block.Height)
+				log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash()[:15], block.Height)
 			}
 
 			// gets the macroblock
@@ -162,7 +173,11 @@ func (b *Bitcoin) updateSiblings(block common.Block) bool {
 func (b *Bitcoin) disseminate() {
 	for {
 		blockToDisseminate := <-b.ledger.readyToDisseminate
-		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash())
+		processingTime := blockToDisseminate.GetEnqueueElapsedTime()
+		b.statLogger.LogProcessingTime(processingTime)
+		// increments the hope count
+		blockToDisseminate.HopCount++
+		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash()[:15])
 		b.peerSet.DissaminateBlock(blockToDisseminate)
 	}
 }

@@ -52,11 +52,7 @@ func (c *P2PClient) SendBlock(block common.Block) {
 func (c *P2PClient) mainLoop() {
 
 	for {
-		select {
-
-		case block := <-c.blockChan:
-			go c.rpcClient.Call("P2PServer.HandleBlock", block, nil)
-
-		}
+		block := <-c.blockChan
+		go c.rpcClient.Call("P2PServer.HandleBlock", block, nil)
 	}
 }

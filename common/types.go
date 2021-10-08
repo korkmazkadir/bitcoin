@@ -3,6 +3,7 @@ package common
 import (
 	"crypto/sha256"
 	"fmt"
+	"time"
 )
 
 // Block defines blockchain block structure
@@ -21,6 +22,22 @@ type Block struct {
 	Signature []byte
 
 	Payload []byte
+
+	// time in seconds
+	Timestamp int64
+
+	HopCount int
+
+	receiveTime int64
+}
+
+func (b *Block) SetEnqueueTime() {
+	b.receiveTime = time.Now().UnixMilli()
+}
+
+func (b Block) GetEnqueueElapsedTime() int {
+
+	return int(time.Now().UnixMilli() - b.receiveTime)
 }
 
 // Hash produces the digest of a Block.
