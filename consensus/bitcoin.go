@@ -101,7 +101,8 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 			block.Nonce = produceRandomNonce()
 			microBlockIndex := MicroBlockIndex(block.Nonce, block.Siblings, b.ledger.concurrencyLevel)
-			//TODO: Fix this. To call a function with pointer I did this but it seems strange
+
+			//strange way of calling a function
 			blockPointer := &block
 			blockPointer.SetEnqueueTime()
 

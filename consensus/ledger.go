@@ -3,6 +3,7 @@ package consensus
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/korkmazkadir/bitcoin/common"
 )
@@ -166,7 +167,8 @@ func (l *Ledger) append(block common.Block) bool {
 		return false
 	}
 
-	//TODO: validate block, and simulate the cost of validation here
+	// emulatest the validation cost for a block
+	l.emulateCost(len(block.Payload))
 
 	currentRoundBlocks = append(currentRoundBlocks, block)
 	l.blockMap[block.Height] = currentRoundBlocks
@@ -221,4 +223,15 @@ func (l *Ledger) PrintStatus() {
 
 	log.Println(status)
 
+}
+
+func (l *Ledger) emulateCost(payloadSize int) {
+	//
+	// 0.13 ms unit cost to validate a transaction
+	// to emulate the cost of merkle tree creation, we have add 0.003 to the unit cost.
+	//
+	sleepTime := (float64(0.133) * float64(payloadSize/512))
+	sleepDuration := time.Duration(sleepTime) * time.Millisecond
+	log.Printf("the node will sleep to emulate tx validation, and merkle tree construction %s \n", sleepDuration)
+	time.Sleep(sleepDuration)
 }
