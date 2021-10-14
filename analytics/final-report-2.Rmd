@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/home/kadir/Desktop/stats_4';
+      workingDir <- '/home/kadir/Desktop/stats_2000';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -87,6 +87,14 @@ calculateSummaryStats <-function(df){
 }
 
 
+plot_histogram <- function(df){
+  
+  ggplot(df, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+}
+
+
 ```
 
 
@@ -115,10 +123,7 @@ result$table
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-#hist(blockReceivedDF$ElapsedTime)
-ggplot(blockReceivedDF, aes(x=ElapsedTime))+
-  geom_histogram(color="darkblue", fill="lightblue")
-
+#plot_histogram(blockReceivedDF)
 kable( calculateSummaryStats(blockReceivedDF) )
 
 ```
@@ -129,10 +134,7 @@ kable( calculateSummaryStats(blockReceivedDF) )
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-#hist(hopCountDF$ElapsedTime)
-ggplot(hopCountDF, aes(x=ElapsedTime))+
-  geom_histogram(color="darkblue", fill="lightblue")
-
+#plot_histogram(hopCountDF)
 kable( calculateSummaryStats(hopCountDF) )
 
 
@@ -143,11 +145,20 @@ kable( calculateSummaryStats(hopCountDF) )
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-#hist(processingTimeDF$ElapsedTime)
-ggplot(processingTimeDF, aes(x=ElapsedTime))+
-  geom_histogram(color="darkblue", fill="lightblue")
-
+#plot_histogram(processingTimeDF)
 kable( calculateSummaryStats(processingTimeDF) )
+
+blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
+
+head(blockReceivedDF_bug, n=100)
+
+
+```
+
+
+\newpage
+## Bug
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
 blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
 

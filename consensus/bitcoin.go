@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"fmt"
 	"log"
@@ -71,6 +70,8 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 		case blockToAppend := <-blockChan:
 
+			log.Println("RECEIVED...")
+
 			microBlockIndex := MicroBlockIndex(blockToAppend.Nonce, blockToAppend.Siblings, b.ledger.concurrencyLevel)
 
 			disseminationTime := int(time.Now().UnixMilli() - blockToAppend.Timestamp)
@@ -92,8 +93,7 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 				return blocks
 			}
 
-			if b.updateSiblings(block) {
-				// siblings are updated
+			if b.updateSiblingsAndPrevBlock(&block) {
 				miningTimeChan = b.miningTime()
 			}
 
@@ -106,16 +106,15 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 			blockPointer := &block
 			blockPointer.SetEnqueueTime()
 
-			_, blockAvailable := b.ledger.GetMicroblock(block.Height, microBlockIndex)
-			// appends the mined block if there is not a block mined for the specific index
-			if !blockAvailable {
-				// signs the block
-				block.Signature = Sign(block.Hash(), b.privateKey)
-				block.Timestamp = time.Now().UnixMilli()
-				b.ledger.AppendBlock(block)
+			// I have removed the microblock index check
+			// I think it was impossible to have full microbloc index
+			// because of siblings mechanism
 
-				log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash()[:15], block.Height)
-			}
+			block.Signature = Sign(block.Hash(), b.privateKey)
+			block.Timestamp = time.Now().UnixMilli()
+			b.ledger.AppendBlock(block)
+
+			log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash()[:15], block.Height)
 
 			// gets the macroblock
 			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
@@ -125,7 +124,7 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 				return blocks
 			}
 
-			log.Println("Unsuccessful mining...")
+			log.Println("round not finished...")
 			miningTimeChan = b.miningTime()
 
 		}
@@ -134,40 +133,54 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 }
 
-func (b *Bitcoin) updateSiblings(block common.Block) bool {
+func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
 
 	siblingsUpdated := false
-	siblings := b.ledger.GetSiblings(block.Height)
+	prevHashUpdated := false
 
-	var siblingStrings []string
+	siblings, previousBlockHashes := b.ledger.GetSiblings(block.Height)
 
-	for i := 0; i < b.ledger.concurrencyLevel; i++ {
+	if !Equal(siblings, block.Siblings) {
+		block.Siblings = siblings
+		siblingsUpdated = true
+	}
 
-		if len(siblings[i]) > 0 {
-
-			if len(block.Siblings[i]) > 0 && bytes.Equal(siblings[i], block.Siblings[i]) == false {
-				panic(fmt.Errorf("a sibling is reassigned"))
-			}
-
-			if len(block.Siblings[i]) == 0 {
-				block.Siblings[i] = siblings[i]
-				siblingsUpdated = true
-			}
-
-			siblingStrings = append(siblingStrings, fmt.Sprintf("[%x]", block.Siblings[i][:5]))
-
-		} else {
-
-			siblingStrings = append(siblingStrings, "[ ]")
-		}
-
+	if !Equal(previousBlockHashes, block.PrevBlockHashes) {
+		block.PrevBlockHashes = previousBlockHashes
+		prevHashUpdated = true
 	}
 
 	if siblingsUpdated {
+
+		var siblingStrings []string
+		for _, sibling := range siblings {
+			if len(sibling) > 0 {
+				siblingStrings = append(siblingStrings, fmt.Sprintf("[ %x ]", sibling[:10]))
+			} else {
+				siblingStrings = append(siblingStrings, "[ ]")
+			}
+
+		}
+
 		log.Printf("Siblings Updated %s\n", strings.Join(siblingStrings[:], "--"))
 	}
 
-	return siblingsUpdated
+	if prevHashUpdated {
+
+		var prevHashString []string
+		for _, prevHash := range previousBlockHashes {
+			if len(prevHash) > 0 {
+				prevHashString = append(prevHashString, fmt.Sprintf("[ %x ]", prevHash[:10]))
+			} else {
+				prevHashString = append(prevHashString, "[ ]")
+			}
+
+		}
+
+		log.Printf("Previous Block Hash Updated %s\n", strings.Join(prevHashString[:], "--"))
+	}
+
+	return siblingsUpdated || prevHashUpdated
 }
 
 // disseminates blocks in the background
@@ -185,8 +198,10 @@ func (b *Bitcoin) disseminate() {
 
 func (b *Bitcoin) miningTime() <-chan time.Time {
 
-	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * float64(b.config.MiningTime) * 1 / (1 / float64(b.config.NodeCount)))
-	log.Printf("Mining time is %d \n", simulatedMiningTime)
+	// MiningTime / CC
+	expected := b.config.MiningTime / b.ledger.concurrencyLevel
+	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * float64(expected) * 1 / (1 / float64(b.config.NodeCount)))
+	log.Printf("[expected: %d]Mining time is %d \n", expected, simulatedMiningTime)
 	return time.After(time.Duration(simulatedMiningTime) * time.Second)
 }
 

@@ -75,24 +75,12 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 		return []common.Block{}, false
 	}
 
-	blocks := make([]common.Block, l.concurrencyLevel)
-	microblockIndexes := make([]bool, l.concurrencyLevel)
-	for _, block := range heightBlocks {
-		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
-		microblockIndexes[microblockIndex] = true
-		blocks[microblockIndex] = block
-	}
+	blocks, count, _ := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
 
-	for _, isMicroBlockAvailable := range microblockIndexes {
-		if !isMicroBlockAvailable {
-			return []common.Block{}, false
-		}
-	}
-
-	return blocks, true
+	return blocks, count == l.concurrencyLevel
 }
 
-func (l *Ledger) GetSiblings(height int) [][]byte {
+func (l *Ledger) GetSiblings(height int) ([][]byte, [][]byte) {
 
 	heightBlocks := l.blockMap[height]
 
@@ -102,22 +90,23 @@ func (l *Ledger) GetSiblings(height int) [][]byte {
 			panic("no genesis block")
 		}
 
-		return nil
+		return nil, nil
 	}
 
+	blocks, _, previousBlockHashes := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
+
 	siblingHashes := make([][]byte, l.concurrencyLevel)
-	microblockIndexes := make([]bool, l.concurrencyLevel)
-	for _, block := range heightBlocks {
-		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
-		if !microblockIndexes[microblockIndex] {
-			microblockIndexes[microblockIndex] = true
-			siblingHashes[microblockIndex] = block.Hash()
+	for i := 0; i < len(blocks); i++ {
+		block := blocks[i]
+		if len(block.Payload) > 0 {
+			siblingHashes[i] = block.Hash()
 		}
 	}
 
-	return siblingHashes
+	return siblingHashes, previousBlockHashes
 }
 
+/*
 func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, bool) {
 
 	heightBlocks, ok := l.blockMap[height]
@@ -136,6 +125,7 @@ func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, b
 
 	return common.Block{}, false
 }
+*/
 
 func (l *Ledger) append(block common.Block) bool {
 
@@ -157,6 +147,7 @@ func (l *Ledger) append(block common.Block) bool {
 		_, ok := availableBlocks[string(h)]
 		if !ok {
 			// returning because one of the prev blocks is missing!!!
+			log.Printf("A prev block is missing: %x\n", h[:10])
 			return false
 		}
 	}
@@ -164,6 +155,7 @@ func (l *Ledger) append(block common.Block) bool {
 	// apending block top the ledger
 	currentRoundBlocks := l.blockMap[block.Height]
 	if !areAllSiblingsAvailable(block, currentRoundBlocks) {
+		log.Println("A sibling is missing")
 		return false
 	}
 

@@ -12,3 +12,10 @@
       apt:
         name: iproute2
         state: present
+
+    - name: Add or modify nofile soft limit for the user root
+      community.general.pam_limits:
+        domain: root
+        limit_type: soft
+        limit_item: nofile
+        value: '-1'
