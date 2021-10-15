@@ -70,8 +70,6 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 
 		case blockToAppend := <-blockChan:
 
-			log.Println("RECEIVED...")
-
 			microBlockIndex := MicroBlockIndex(blockToAppend.Nonce, blockToAppend.Siblings, b.ledger.concurrencyLevel)
 
 			disseminationTime := int(time.Now().UnixMilli() - blockToAppend.Timestamp)
@@ -89,7 +87,8 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 			// gets the macroblock
 			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
 			if roundFinished {
-				b.statLogger.LogEndOfRound()
+				macroblockHash := common.MacroblockHash(blocks)
+				b.statLogger.LogEndOfRound(macroblockHash)
 				return blocks
 			}
 
@@ -119,12 +118,11 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 			// gets the macroblock
 			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
 			if roundFinished {
-				b.statLogger.LogEndOfRound()
-				log.Println("end of round")
+				macroblockHash := common.MacroblockHash(blocks)
+				b.statLogger.LogEndOfRound(macroblockHash)
 				return blocks
 			}
 
-			log.Println("round not finished...")
 			miningTimeChan = b.miningTime()
 
 		}

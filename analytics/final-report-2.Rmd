@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/home/kadir/Desktop/stats_2000';
+      workingDir <- '/home/kadir/Desktop/stats_new_format';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -25,7 +25,7 @@ experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
 
 
 
-colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime")
+colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
 
 
 printSummaryStats <- function(df, column) {
@@ -119,6 +119,24 @@ result$table
 
 
 \newpage
+## Forks
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+fork_df <- endOfRound %>% 
+                    count(BlockSize, CC, Round, BlockHash) %>% count(BlockSize, CC, Round)
+
+#kable(fork_df)
+
+fork_df <- fork_df %>% group_by(BlockSize, CC) %>% summarise( ForkFactor = mean(n) )
+
+kable(fork_df)
+
+```
+
+
+
+\newpage
 ## Block Dissemination Time
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
@@ -151,6 +169,28 @@ kable( calculateSummaryStats(processingTimeDF) )
 blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
 
 head(blockReceivedDF_bug, n=100)
+
+
+```
+
+\newpage
+## Delivered Block Counts
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+block_count_df <- blockReceivedDF %>% 
+                    count(BlockSize, CC, NodeID) %>% 
+                          group_by( BlockSize, CC  ) %>%
+                            summarise(
+                              MeanBlockCount = mean(n)
+                            )
+
+
+block_count_df$MeanBlockCount <- ceiling(block_count_df$MeanBlockCount)
+
+ggplot(block_count_df, aes(fill=factor(CC), y=factor(MeanBlockCount), x=factor(BlockSize))) + 
+    geom_bar(position="dodge", stat="identity")
+
+kable(head(block_count_df, n=100))
 
 
 ```

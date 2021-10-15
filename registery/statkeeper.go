@@ -86,7 +86,7 @@ func getNodeInfoString(ipAddress string, portNumber int, nodeID int) string {
 }
 
 func getEventString(nodeID int, event common.Event) string {
-	return fmt.Sprintf("%d\t%d\t%s\t%d\n", nodeID, event.Round, event.Type, event.ElapsedTime)
+	return fmt.Sprintf("%d\t%d\t%s\t%d\t%s\n", nodeID, event.Round, event.Type, event.ElapsedTime, event.BlockHash)
 }
 
 func (s *StatKeeper) GetConfigFilePath() string {

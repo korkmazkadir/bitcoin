@@ -34,6 +34,7 @@ type Event struct {
 	Round       int
 	Type        EventType
 	ElapsedTime int
+	BlockHash   string
 }
 
 type StatList struct {
@@ -70,10 +71,10 @@ func (s *StatLogger) LogProcessingTime(elapsedTime int) {
 	s.events = append(s.events, Event{Round: s.round, Type: ProcessingTime, ElapsedTime: elapsedTime})
 }
 
-func (s *StatLogger) LogEndOfRound() {
+func (s *StatLogger) LogEndOfRound(macroblockHash []byte) {
 	elapsedTime := time.Since(s.roundStart).Milliseconds()
-	log.Printf("stats\t%d\t%d\t%s\t%d\t", s.nodeID, s.round, "END_OF_ROUND", elapsedTime)
-	s.events = append(s.events, Event{Round: s.round, Type: EndOfRound, ElapsedTime: int(elapsedTime)})
+	log.Printf("stats\t%d\t%d\t%s\t%d\t%x\t", s.nodeID, s.round, "END_OF_ROUND", elapsedTime, macroblockHash)
+	s.events = append(s.events, Event{Round: s.round, Type: EndOfRound, ElapsedTime: int(elapsedTime), BlockHash: fmt.Sprintf("%x", macroblockHash)})
 }
 
 func (s *StatLogger) GetEvents() []Event {

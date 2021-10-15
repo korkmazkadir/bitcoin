@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"log"
 	"net"
@@ -111,12 +110,12 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 		previousBlock = minedBlock
 		//log.Printf("decided block hash %x\n", encodeBase64(block.Hash()[:15]))
 
-		currentRound++
-		//time.Sleep(2 * time.Second)
+		roundValue, macroBlockHash := sanityCheck(leaderCount, currentRound, minedBlock)
 
 		//log.Printf("Appended block: %x\n", encodeBase64(singleBlockHash(minedBlock)[:15]))
-		log.Printf("Appended block: %x\n", singleBlockHash(minedBlock))
+		log.Printf("Appended Block\t%d\t%x\n", roundValue, macroBlockHash[:15])
 
+		currentRound++
 	}
 
 }
@@ -129,24 +128,4 @@ func hashMacroblock(blocks []common.Block) [][]byte {
 	}
 
 	return hashes
-}
-
-func singleBlockHash(blocks []common.Block) []byte {
-
-	if len(blocks) == 1 {
-		return blocks[0].Hash()
-	}
-
-	var hashSlice []byte
-	for i := range blocks {
-		hashSlice = append(hashSlice, blocks[i].Hash()...)
-	}
-
-	h := sha256.New()
-	_, err := h.Write(hashSlice)
-	if err != nil {
-		panic(err)
-	}
-
-	return h.Sum(nil)
 }

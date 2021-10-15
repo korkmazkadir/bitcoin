@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -116,4 +119,63 @@ func getRandomByteSlice(size int) []byte {
 		panic(err)
 	}
 	return data
+}
+
+func sanityCheck(cc int, currentRound int, blocks []common.Block) (round int, macroBlockHash []byte) {
+
+	if len(blocks) != cc {
+		panic(fmt.Errorf("microblock count(%d) is not equal to cc(%d) value", len(blocks), cc))
+	}
+
+	microblockBlockHashes := make(map[string]struct{})
+	for i := 0; i < len(blocks); i++ {
+		microBlock := blocks[i]
+		key := string(microBlock.Hash())
+		_, ok := microblockBlockHashes[key]
+		if ok {
+			panic(fmt.Errorf("same microblock appended twice %x", microBlock.Hash()))
+		}
+		microblockBlockHashes[key] = struct{}{}
+	}
+
+	previousBlockHash := Hash(blocks[0].PrevBlockHashes)
+	for i := 0; i < len(blocks); i++ {
+		microBlock := blocks[i]
+
+		if microBlock.Height != currentRound {
+			panic(fmt.Errorf("microblock height(%d) is not equal to current round number(%d)", microBlock.Height, currentRound))
+		}
+
+		if !bytes.Equal(previousBlockHash, Hash(microBlock.PrevBlockHashes)) {
+			panic(fmt.Errorf("previous block hashes are different [%d] != [%d]", previousBlockHash, Hash(microBlock.PrevBlockHashes)))
+		}
+
+		for _, siblingHash := range microBlock.Siblings {
+			if len(siblingHash) > 0 {
+				_, ok := microblockBlockHashes[string(siblingHash)]
+				if !ok {
+					log.Println(fmt.Errorf("sibling is not in the list of appended blocks %x", siblingHash))
+				}
+			}
+		}
+
+	}
+
+	round = currentRound
+	macroBlockHash = common.MacroblockHash(blocks)
+	return
+}
+
+func Hash(data [][]byte) []byte {
+
+	h := sha256.New()
+
+	for _, d := range data {
+		_, err := h.Write(d)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return h.Sum(nil)
 }
