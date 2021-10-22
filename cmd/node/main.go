@@ -77,7 +77,7 @@ func main() {
 	registry.UploadStats(statList)
 
 	log.Printf("reached target round count. Shutting down in 5 minute\n")
-	time.Sleep(1 * time.Minute)
+	time.Sleep(5 * time.Minute)
 
 	bitcoin.PrintLedgerStatus()
 
