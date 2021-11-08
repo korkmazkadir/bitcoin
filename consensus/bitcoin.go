@@ -70,14 +70,14 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 
 		case blockToAppend := <-blockChan:
 
-			microBlockIndex := int(blockToAppend.Nonce % int64(b.ledger.concurrencyLevel))
-
-			log.Printf("[%d] Received:\t%x\tHeight: %d\n", microBlockIndex, blockToAppend.Hash(), blockToAppend.Height)
+			log.Printf("[%d] Received:\t%x\tSolver: %x\tHeight: %d\n", blockToAppend.MicroblockIndex, blockToAppend.Hash()[:10], blockToAppend.PuzzleSolver[:10], blockToAppend.Height)
 
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)
 
 		case subleaderReq := <-subleaderReqChan:
+
+			log.Printf("[SubleaderReq] Height: %d Solver: %x Index: %d\n", subleaderReq.Height, subleaderReq.PuzzleSolver[:10], subleaderReq.MicroblockIndex)
 
 			if subleaderReq.Height < b.ledger.GetHeight() {
 				log.Printf("Discarts subleadership request for the round %d\n", subleaderReq.Height)
@@ -104,7 +104,7 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 					PuzzleSolver:    b.publickKey,
 					MicroblockIndex: i,
 				}
-				b.subleaderPeerSet.SendSubleaderRequest(i, subleaderReq)
+				b.subleaderPeerSet.SendSubleaderRequest(i-1, subleaderReq)
 			}
 
 			b.ledger.AppendBlock(block)
@@ -126,7 +126,7 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 func (b *Bitcoin) disseminate() {
 	for {
 		blockToDisseminate := <-b.ledger.readyToDisseminate
-		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash())
+		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash()[:10])
 		b.peerSet.DissaminateBlock(&blockToDisseminate)
 	}
 }

@@ -105,7 +105,7 @@ func (l *MacroblockLedger) addToWaitingList(block common.Block) []common.Block {
 			panic("the block height is not same")
 		}
 
-		if bytes.Equal(b.PrevBlockHash, block.PrevBlockHash) {
+		if !bytes.Equal(b.PrevBlockHash, block.PrevBlockHash) {
 			panic("previous block hashes are not same")
 		}
 	}

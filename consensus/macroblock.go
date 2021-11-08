@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/sha256"
+	"sort"
 
 	"github.com/korkmazkadir/bitcoin/common"
 )
@@ -15,7 +16,10 @@ type Macroblock struct {
 
 func NewMacroblock(previousMacroblock *Macroblock, blocks []common.Block, height int) *Macroblock {
 
-	//TODO: order microblocks according to microblock index
+	// sort microblocks to have a consistent hashing
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].MicroblockIndex < blocks[j].MicroblockIndex
+	})
 
 	m := &Macroblock{
 		previous: previousMacroblock,

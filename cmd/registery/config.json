@@ -1,5 +1,5 @@
 {
-  "NodeCount": 2000,
+  "NodeCount": 1000,
   "EndRound": 30,
   "GossipFanout": 8,
   "LeaderCount" : 4,
