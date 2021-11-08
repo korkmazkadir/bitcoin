@@ -13,23 +13,25 @@ import (
 )
 
 type Bitcoin struct {
-	demux      *common.Demux
-	config     registery.NodeConfig
-	peerSet    network.PeerSet
-	statLogger *common.StatLogger
-	ledger     *Ledger
-	publickKey []byte
-	privateKey []byte
+	demux            *common.Demux
+	config           registery.NodeConfig
+	peerSet          network.PeerSet
+	subleaderPeerSet network.PeerSet
+	statLogger       *common.StatLogger
+	ledger           *MacroblockLedger
+	publickKey       []byte
+	privateKey       []byte
 }
 
-func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, statLogger *common.StatLogger) *Bitcoin {
+func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, subleaderPeerSet network.PeerSet, statLogger *common.StatLogger) *Bitcoin {
 
 	consensus := &Bitcoin{
-		demux:      demux,
-		config:     nodeConfig,
-		peerSet:    peerSet,
-		statLogger: statLogger,
-		ledger:     NewLedger(nodeConfig.LeaderCount),
+		demux:            demux,
+		config:           nodeConfig,
+		peerSet:          peerSet,
+		subleaderPeerSet: subleaderPeerSet,
+		statLogger:       statLogger,
+		ledger:           NewMacroblockLedger(nodeConfig.LeaderCount),
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(nil)
@@ -46,23 +48,22 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 	return consensus
 }
 
-func (b *Bitcoin) GetMacroBlock(round int) ([]common.Block, bool) {
+func (b *Bitcoin) GetMacroBlock(round int) ([]common.Block, []byte, bool) {
 
-	return b.ledger.GetMacroBlock(round)
+	return b.ledger.GetMacroblock(round)
 }
 
 // MineBlock implements simulated mining
-func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
+func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 
 	// sets block issuer
 	block.Issuer = b.publickKey
 
 	b.statLogger.NewRound(block.Height)
 
-	simulatedMiningTime := b.miningTime()
+	miningTimeChan := b.miningTime()
 	blockChan := b.demux.GetBlockChan()
-
-	log.Printf("Mining time is %d \n", simulatedMiningTime)
+	subleaderReqChan := b.demux.GetSubleaderRequestChan()
 
 	for {
 		select {
@@ -76,49 +77,49 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)
 
-			// gets the macroblock
-			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
-			if roundFinished {
-				b.statLogger.LogEndOfRound()
-				return blocks
-			}
+		case subleaderReq := <-subleaderReqChan:
 
-		case <-time.After(time.Duration(simulatedMiningTime) * time.Second):
+			if subleaderReq.Height < b.ledger.GetHeight() {
+				log.Printf("Discarts subleadership request for the round %d\n", subleaderReq.Height)
+				break
+			}
 
 			block.Nonce = produceRandomNonce()
-			microBlockIndex := b.getBlockIndex(block.Nonce)
-			_, blockAvailable := b.ledger.GetMicroblock(block.Height, microBlockIndex)
-			// appends the mined block if there is not a block mined for the specific index
-			if !blockAvailable {
-				// signs the block
-				block.Signature = Sign(block.Hash(), b.privateKey)
-				b.ledger.AppendBlock(block)
+			block.MicroblockIndex = subleaderReq.MicroblockIndex
+			block.PuzzleSolver = subleaderReq.PuzzleSolver
 
-				log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash(), block.Height)
+			log.Println("Submitting a sub block")
+			b.ledger.AppendBlock(block)
+
+		case <-miningTimeChan:
+
+			block.Nonce = produceRandomNonce()
+			block.MicroblockIndex = 0
+			block.PuzzleSolver = b.publickKey
+
+			// sends subleaderhip requests
+			for i := 1; i < b.config.LeaderCount; i++ {
+				subleaderReq := common.SubleaderRequest{
+					Height:          block.Height,
+					PuzzleSolver:    b.publickKey,
+					MicroblockIndex: i,
+				}
+				b.subleaderPeerSet.SendSubleaderRequest(i, subleaderReq)
 			}
 
-			// gets the macroblock
-			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
-			if roundFinished {
-				b.statLogger.LogEndOfRound()
-				log.Println("end of round")
-				return blocks
-			}
+			b.ledger.AppendBlock(block)
 
-			log.Println("Unsuccessful mining...")
-			// if its is here, it means that there are missing microblocks. The current node should try to mine
-			simulatedMiningTime = b.miningTime()
-			log.Printf("Mining time is %d \n", simulatedMiningTime)
+		}
 
+		// checks for the end of round...
+		blocks, macroblockHash, roundFinished := b.ledger.GetMacroblock(block.Height)
+		if roundFinished {
+			b.statLogger.LogEndOfRound()
+			return blocks, macroblockHash
 		}
 
 	}
 
-}
-
-func (b *Bitcoin) getBlockIndex(nonce int64) int {
-
-	return int(nonce % int64(b.ledger.concurrencyLevel))
 }
 
 // disseminates blocks in the background
@@ -126,13 +127,16 @@ func (b *Bitcoin) disseminate() {
 	for {
 		blockToDisseminate := <-b.ledger.readyToDisseminate
 		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash())
-		b.peerSet.DissaminateBlock(blockToDisseminate)
+		b.peerSet.DissaminateBlock(&blockToDisseminate)
 	}
 }
 
-func (b *Bitcoin) miningTime() int {
+func (b *Bitcoin) miningTime() <-chan time.Time {
 
-	return int(-math.Log(1.0-rand.Float64()) * 100 * 1 / (1 / float64(b.config.NodeCount)))
+	expected := b.config.MiningTime
+	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * float64(expected) * 1 / (1 / float64(b.config.NodeCount)))
+	log.Printf("[expected: %d]Mining time is %d \n", expected, simulatedMiningTime)
+	return time.After(time.Duration(simulatedMiningTime) * time.Second)
 }
 
 func (b *Bitcoin) PrintLedgerStatus() {

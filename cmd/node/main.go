@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"log"
 	"net"
@@ -66,8 +65,10 @@ func main() {
 	}
 
 	peerSet := createPeerSet(nodeList, nodeConfig.GossipFanout, nodeInfo)
+	subleaderPeerSet := createPeerSet(nodeList, nodeConfig.LeaderCount-1, nodeInfo)
+
 	statLogger := common.NewStatLogger(nodeInfo.ID)
-	bitcoin := consensus.NewBitcoin(demux, nodeConfig, peerSet, statLogger)
+	bitcoin := consensus.NewBitcoin(demux, nodeConfig, peerSet, subleaderPeerSet, statLogger)
 
 	runConsensus(bitcoin, nodeConfig.EndRound, nodeConfig.NodeCount, nodeConfig.LeaderCount, nodeConfig.BlockSize)
 
@@ -91,15 +92,15 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 	log.Println("Consensus started")
 
 	// previous block is set to genesis block
-	previousBlock, _ := bitcoinPP.GetMacroBlock(0)
+	_, prevBlockHash, _ := bitcoinPP.GetMacroBlock(0)
 
 	currentRound := 1
 	for currentRound <= numberOfRounds {
 
 		log.Printf("+++++++++ Round %d +++++++++++++++\n", currentRound)
 
-		block := createBlock(currentRound, hashMacroblock(previousBlock), blockSize, leaderCount)
-		minedBlock := bitcoinPP.MineBlock(block)
+		block := createBlock(currentRound, prevBlockHash, blockSize, leaderCount)
+		minedBlock, minedBlockHash := bitcoinPP.MineBlock(block)
 
 		payloadSize := 0
 		for i := range minedBlock {
@@ -108,45 +109,12 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 
 		log.Printf("Appended payload size is %d bytes\n", payloadSize)
 
-		previousBlock = minedBlock
-		//log.Printf("decided block hash %x\n", encodeBase64(block.Hash()[:15]))
+		log.Printf("Appended block: %x\n", minedBlockHash)
 
 		currentRound++
-		//time.Sleep(2 * time.Second)
 
-		//log.Printf("Appended block: %x\n", encodeBase64(singleBlockHash(minedBlock)[:15]))
-		log.Printf("Appended block: %x\n", singleBlockHash(minedBlock))
+		prevBlockHash = minedBlockHash
 
 	}
 
-}
-
-func hashMacroblock(blocks []common.Block) [][]byte {
-	var hashes [][]byte
-
-	for _, b := range blocks {
-		hashes = append(hashes, b.Hash())
-	}
-
-	return hashes
-}
-
-func singleBlockHash(blocks []common.Block) []byte {
-
-	if len(blocks) == 1 {
-		return blocks[0].Hash()
-	}
-
-	var hashSlice []byte
-	for i := range blocks {
-		hashSlice = append(hashSlice, blocks[i].Hash()...)
-	}
-
-	h := sha256.New()
-	_, err := h.Write(hashSlice)
-	if err != nil {
-		panic(err)
-	}
-
-	return h.Sum(nil)
 }

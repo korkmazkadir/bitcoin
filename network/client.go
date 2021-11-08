@@ -11,12 +11,7 @@ import (
 type P2PClient struct {
 	IPAddress  string
 	portNumber int
-
-	rpcClient *rpc.Client
-
-	blockChan chan common.Block
-
-	err error
+	rpcClient  *rpc.Client
 }
 
 // NewClient creates a new client
@@ -32,31 +27,15 @@ func NewClient(IPAddress string, portNumber int) (*P2PClient, error) {
 	client.portNumber = portNumber
 	client.rpcClient = rpcClient
 
-	client.blockChan = make(chan common.Block, 1024)
-
 	return client, nil
 }
 
-// Start starts the main loop of client. It blocks the calling goroutine
-func (c *P2PClient) Start() {
+func (c *P2PClient) SendBlock(block *common.Block) {
 
-	c.mainLoop()
+	go c.rpcClient.Call("P2PServer.HandleBlock", block, nil)
 }
 
-// SendBlockChunk enques a chunk of a block to send
-func (c *P2PClient) SendBlock(block common.Block) {
+func (c *P2PClient) SendSubleaderRequest(req common.SubleaderRequest) {
 
-	c.blockChan <- block
-}
-
-func (c *P2PClient) mainLoop() {
-
-	for {
-		select {
-
-		case block := <-c.blockChan:
-			go c.rpcClient.Call("P2PServer.HandleBlock", block, nil)
-
-		}
-	}
+	go c.rpcClient.Call("P2PServer.HandleSubleaderRequest", req, nil)
 }

@@ -43,7 +43,6 @@ func TestMain(m *testing.M) {
 func nodeConfigTestInstance() NodeConfig {
 	nodeConfig := NodeConfig{
 		NodeCount:    10,
-		EpochSeed:    []byte{1, 2, 3, 4, 5},
 		EndRound:     10,
 		GossipFanout: 16,
 	}

@@ -19,6 +19,8 @@ type Demux struct {
 	processedMessageMap map[string]struct{}
 
 	blockChan chan Block
+
+	subLeaderReqChan chan SubleaderRequest
 }
 
 // NewDemultiplexer creates a new demultiplexer with initial round value
@@ -27,6 +29,7 @@ func NewDemultiplexer(initialRound int) *Demux {
 	demux := &Demux{currentRound: initialRound}
 	demux.processedMessageMap = make(map[string]struct{})
 	demux.blockChan = make(chan Block, channelCapacity)
+	demux.subLeaderReqChan = make(chan SubleaderRequest, channelCapacity)
 
 	return demux
 }
@@ -50,9 +53,20 @@ func (d *Demux) EnqueBlock(block Block) {
 }
 
 // EnqueBlockChunk enques a block chunk to be the consumed by consensus layer
+func (d *Demux) EnqueSubleaderRequest(subleaderReq SubleaderRequest) {
+
+	d.subLeaderReqChan <- subleaderReq
+}
+
+// EnqueBlockChunk enques a block chunk to be the consumed by consensus layer
 func (d *Demux) GetBlockChan() chan Block {
 
 	return d.blockChan
+}
+
+func (d *Demux) GetSubleaderRequestChan() chan SubleaderRequest {
+
+	return d.subLeaderReqChan
 }
 
 func (d *Demux) isProcessed(hash string) bool {

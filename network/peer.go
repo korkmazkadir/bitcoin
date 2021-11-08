@@ -19,15 +19,12 @@ func (p *PeerSet) AddPeer(IPAddress string, portNumber int) error {
 		return err
 	}
 
-	// starts the main loop of client
-	go client.Start()
-
 	p.peers = append(p.peers, client)
 
 	return nil
 }
 
-func (p *PeerSet) DissaminateBlock(block common.Block) {
+func (p *PeerSet) DissaminateBlock(block *common.Block) {
 
 	for i := 0; i < len(p.peers); i++ {
 		peer := p.peers[i]
@@ -37,4 +34,10 @@ func (p *PeerSet) DissaminateBlock(block common.Block) {
 	if len(p.peers) == 0 {
 		panic(ErrorNoCorrectPeerAvailable)
 	}
+}
+
+func (p *PeerSet) SendSubleaderRequest(peerIndex int, subleaderReq common.SubleaderRequest) {
+
+	peer := p.peers[peerIndex]
+	peer.SendSubleaderRequest(subleaderReq)
 }

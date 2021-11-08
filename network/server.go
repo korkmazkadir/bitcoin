@@ -19,3 +19,10 @@ func (s *P2PServer) HandleBlock(block *common.Block, reply *int) error {
 
 	return nil
 }
+
+func (s *P2PServer) HandleSubleaderRequest(subleaderReq *common.SubleaderRequest, reply *int) error {
+
+	s.demux.EnqueSubleaderRequest(*subleaderReq)
+
+	return nil
+}
