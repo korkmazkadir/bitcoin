@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 
@@ -11,6 +10,8 @@ import (
 type MacroblockLedger struct {
 	concurrencyLevel int
 
+	// change key from puzzlesolver to height-puzzlesolver
+	// because same leader can solve two puzzles
 	waitingMap map[string][]common.Block
 	head       *Macroblock
 	blockMap   map[string]*Macroblock
@@ -70,7 +71,7 @@ func (l *MacroblockLedger) GetMacroblock(height int) ([]common.Block, []byte, bo
 
 func (l *MacroblockLedger) appendWaitingBlocks() bool {
 
-	for puzzleSolver, microblocks := range l.waitingMap {
+	for key, microblocks := range l.waitingMap {
 
 		prevBlockHash := microblocks[0].PrevBlockHash
 		prevMacroblock, prevBlockAvailable := l.blockMap[string(prevBlockHash)]
@@ -83,7 +84,7 @@ func (l *MacroblockLedger) appendWaitingBlocks() bool {
 				l.head = macroblock
 			}
 
-			delete(l.waitingMap, puzzleSolver)
+			delete(l.waitingMap, key)
 			return true
 		}
 	}
@@ -91,10 +92,10 @@ func (l *MacroblockLedger) appendWaitingBlocks() bool {
 	return false
 }
 
-func (l *MacroblockLedger) addToWaitingList(block common.Block) []common.Block {
+func (l *MacroblockLedger) addToWaitingList(block common.Block) {
 
-	puzzleSolver := block.PuzzleSolver
-	waitingList := l.waitingMap[string(puzzleSolver)]
+	waitingMapKey := l.waitingMapKey(block.Height, block.PuzzleSolver)
+	waitingList := l.waitingMap[waitingMapKey]
 
 	for _, b := range waitingList {
 		if b.MicroblockIndex == block.MicroblockIndex {
@@ -105,25 +106,32 @@ func (l *MacroblockLedger) addToWaitingList(block common.Block) []common.Block {
 			panic("the block height is not same")
 		}
 
-		if !bytes.Equal(b.PrevBlockHash, block.PrevBlockHash) {
-			panic("previous block hashes are not same")
-		}
+		//TODO: solve this problem properly!!!
+		//if !bytes.Equal(b.PrevBlockHash, block.PrevBlockHash) {
+		//	panic("previous block hashes are not same")
+		//}
 	}
 
 	waitingList = append(waitingList, block)
 
-	l.waitingMap[string(puzzleSolver)] = waitingList
+	l.waitingMap[waitingMapKey] = waitingList
 
-	return waitingList
 }
 
 func (l *MacroblockLedger) PrintStatus() {
+
+	log.Println("Printing the ledger status...")
 
 	last := l.head
 	status := fmt.Sprintf("{count:%d}", len(l.blockMap))
 	for last != nil {
 		status = fmt.Sprintf("%s->[%x]", status, last.Hash()[:5])
+		last = last.previous
 	}
 
 	log.Println(status)
+}
+
+func (l *MacroblockLedger) waitingMapKey(height int, puzzleSolver []byte) string {
+	return fmt.Sprintf("%d-%x", height, puzzleSolver)
 }

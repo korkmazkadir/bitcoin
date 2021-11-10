@@ -63,24 +63,9 @@ func (s *StatLogger) NewRound(round int) {
 	s.roundStart = time.Now()
 }
 
-func (s *StatLogger) LogPropose(elapsedTime int64) {
-	log.Printf("stats\t%d\t%d\t%s\t%d\t", s.nodeID, s.round, "PROPOSE", elapsedTime)
-	s.events = append(s.events, Event{Round: s.round, Type: Proposed, ElapsedTime: int(elapsedTime)})
-}
-
-func (s *StatLogger) LogBlockReceive(elapsedTime int64) {
+func (s *StatLogger) LogBlockReceive(elapsedTime int64, round int) {
 	log.Printf("stats\t%d\t%d\t%s\t%d\t", s.nodeID, s.round, "BLOCK_RECEIVED", elapsedTime)
-	s.events = append(s.events, Event{Round: s.round, Type: BlockReceived, ElapsedTime: int(elapsedTime)})
-}
-
-func (s *StatLogger) LogEcho(elapsedTime int64) {
-	log.Printf("stats\t%d\t%d\t%s\t%d\t", s.nodeID, s.round, "ECHO", elapsedTime)
-	s.events = append(s.events, Event{Round: s.round, Type: Echo, ElapsedTime: int(elapsedTime)})
-}
-
-func (s *StatLogger) LogAccept(elapsedTime int64) {
-	log.Printf("stats\t%d\t%d\t%s\t%d\t", s.nodeID, s.round, "ACCEPT", elapsedTime)
-	s.events = append(s.events, Event{Round: s.round, Type: Accept, ElapsedTime: int(elapsedTime)})
+	s.events = append(s.events, Event{Round: round, Type: BlockReceived, ElapsedTime: int(elapsedTime)})
 }
 
 func (s *StatLogger) LogEndOfRound() {

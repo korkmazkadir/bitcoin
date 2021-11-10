@@ -65,17 +65,26 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 	blockChan := b.demux.GetBlockChan()
 	subleaderReqChan := b.demux.GetSubleaderRequestChan()
 
+	var acceptedProposer []byte
+
 	for {
 		select {
 
 		case blockToAppend := <-blockChan:
 
-			log.Printf("[%d] Received:\t%x\tSolver: %x\tHeight: %d\n", blockToAppend.MicroblockIndex, blockToAppend.Hash()[:10], blockToAppend.PuzzleSolver[:10], blockToAppend.Height)
+			disseminationTime := (time.Now().UnixMilli() - blockToAppend.Timestamp)
+			b.statLogger.LogBlockReceive(disseminationTime, blockToAppend.Height)
+			log.Printf("[%d] Received:\t%x\tSolver: %x\tHeight: %d\tTime: %d\n", blockToAppend.MicroblockIndex, blockToAppend.Hash()[:10], blockToAppend.PuzzleSolver[:10], blockToAppend.Height, disseminationTime)
 
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)
 
 		case subleaderReq := <-subleaderReqChan:
+
+			if acceptedProposer != nil {
+				break
+			}
+			acceptedProposer = subleaderReq.PuzzleSolver
 
 			log.Printf("[SubleaderReq] Height: %d Solver: %x Index: %d\n", subleaderReq.Height, subleaderReq.PuzzleSolver[:10], subleaderReq.MicroblockIndex)
 
@@ -85,17 +94,29 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 			}
 
 			block.Nonce = produceRandomNonce()
+			block.Timestamp = time.Now().UnixMilli()
 			block.MicroblockIndex = subleaderReq.MicroblockIndex
 			block.PuzzleSolver = subleaderReq.PuzzleSolver
 
-			log.Println("Submitting a sub block")
+			log.Printf("Submitting a sub block %x\n", block.Hash()[0:10])
+
+			// marks as processed
+			b.demux.MarkAsProcessed(string(block.Hash()))
 			b.ledger.AppendBlock(block)
 
 		case <-miningTimeChan:
 
+			if acceptedProposer != nil {
+				break
+			}
+			acceptedProposer = b.publickKey
+
 			block.Nonce = produceRandomNonce()
+			block.Timestamp = time.Now().UnixMilli()
 			block.MicroblockIndex = 0
 			block.PuzzleSolver = b.publickKey
+
+			log.Printf("Successful Mining %x\n", block.Hash()[:10])
 
 			// sends subleaderhip requests
 			for i := 1; i < b.config.LeaderCount; i++ {
@@ -104,9 +125,12 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 					PuzzleSolver:    b.publickKey,
 					MicroblockIndex: i,
 				}
+				log.Printf("Sending subleader request height %d, index %d\n", subleaderReq.Height, subleaderReq.MicroblockIndex)
 				b.subleaderPeerSet.SendSubleaderRequest(i-1, subleaderReq)
 			}
 
+			// marks as processed
+			b.demux.MarkAsProcessed(string(block.Hash()))
 			b.ledger.AppendBlock(block)
 
 		}

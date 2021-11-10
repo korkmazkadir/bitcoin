@@ -40,7 +40,6 @@ func (d *Demux) EnqueBlock(block Block) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	round := block.Height
 	blockHash := string(block.Hash())
 	if d.isProcessed(blockHash) {
 		// chunk is already processed
@@ -49,7 +48,7 @@ func (d *Demux) EnqueBlock(block Block) {
 
 	d.blockChan <- block
 
-	d.markAsProcessed(round, blockHash)
+	d.markAsProcessed(blockHash)
 }
 
 // EnqueBlockChunk enques a block chunk to be the consumed by consensus layer
@@ -76,7 +75,14 @@ func (d *Demux) isProcessed(hash string) bool {
 	return ok
 }
 
-func (d *Demux) markAsProcessed(round int, hash string) {
+func (d *Demux) MarkAsProcessed(hash string) {
+	d.mutex.Lock()
+	defer d.mutex.Unlock()
+
+	d.markAsProcessed(hash)
+}
+
+func (d *Demux) markAsProcessed(hash string) {
 
 	d.processedMessageMap[hash] = struct{}{}
 }

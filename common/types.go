@@ -13,6 +13,8 @@ type SubleaderRequest struct {
 
 // Block defines blockchain block structure
 type Block struct {
+	Timestamp int64
+
 	Issuer []byte
 
 	PuzzleSolver []byte
@@ -39,7 +41,7 @@ func handleWriteError(err error) {
 func (b Block) Hash() []byte {
 
 	// handles non byte fields
-	str := fmt.Sprintf("%d,%d,%d", b.MicroblockIndex, b.Height, b.Nonce)
+	str := fmt.Sprintf("%d,%d,%d,%d", b.MicroblockIndex, b.Height, b.Nonce, b.Timestamp)
 	h := sha256.New()
 
 	_, err := h.Write([]byte(str))

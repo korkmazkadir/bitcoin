@@ -1,10 +1,10 @@
 ---
-title: "Rapidchain++ Statistics"
+title: "Bitcoin++ Statistics"
 author: "Kadir Korkmaz"
-date: "July 12, 2021"
+date: "Nov 09, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/algo-rapid';
+      workingDir <- '/Users/kadir/Desktop/bitcoin++_data';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -14,6 +14,19 @@ knit: (function(inputFile, encoding) {
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+
+##Configuration
+
+We use 10 machines from G5K 
+We deployed 1000 Bitcoin & Bitcoin++ nodes.
+Bandwidth 20mbps per process, Latency 50 ms 
+
+In these experiments, mining time is 120 seconds.
+An elected leader chooses CL-1 subleaders.
+
+We plot the round latency, throughput and block dissemination statistics.
+
 
 ```{r data, include=FALSE}
 library(dplyr)
@@ -70,11 +83,14 @@ printMeanBarChart <- function(df){
 
 
 ```{r, echo=FALSE, warning=FALSE}
-proposedDF <- experimentDF %>% filter(Type == "PROPOSED")
+
 blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
-echoDF <-experimentDF %>% filter(Type == "ECHO")
-acceptDF <-experimentDF %>% filter(Type == "ACCEPT")
 endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+
+throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
+throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
+throughputDF$MacroBlockSize <- throughputDF$MacroBlockSize / 1000 # block size in KB
+throughputDF$Throughput <- throughputDF$MacroBlockSize * throughputDF$ConcurrencyConstant / throughputDF$ElapsedTime
 
 ```
 
@@ -83,47 +99,82 @@ endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-result=printMeanBarChart(endOfRound)
-result$plot
-result$table
+ggplot(endOfRound, aes(x=as.factor(ConcurrencyConstant), y=ElapsedTime)) + 
+    geom_boxplot(fill="slateblue", alpha=0.2) + 
+    xlab("ConcurrencyConstant") +
+    ylab("Round Latency(ms)") +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+
+
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(MacroBlockSize, ConcurrencyConstant ) %>%
+                summarise(
+                  Min = min(ElapsedTime),
+                  Q1 = quantile(ElapsedTime, 0.25),
+                  Median = median(ElapsedTime),
+                  Mean = mean(ElapsedTime),
+                  Q3 = quantile(ElapsedTime, 0.75),
+                  Max = max(ElapsedTime)
+                )
+
+
+kable(grouped_endOfRound, n=100)
 ```
 
+
 \newpage
-## Propose Time
+## Throughput
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-result=printMeanBarChart(proposedDF)
-result$plot
-result$table
+ggplot(throughputDF, aes(x=as.factor(ConcurrencyConstant), y=Throughput)) + 
+    geom_boxplot(fill="slateblue", alpha=0.2, outlier.shape=NA) + 
+    xlab("ConcurrencyConstant") +
+    ylab("Throughput (KB/S)") +
+    scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE)) 
+
+
+
+grouped_throughputDF <- throughputDF %>% 
+                group_by(MacroBlockSize, ConcurrencyConstant ) %>%
+                summarise(
+                  Min = min(Throughput),
+                  Q1 = quantile(Throughput, 0.25),
+                  Median = median(Throughput),
+                  Mean = mean(Throughput),
+                  Q3 = quantile(Throughput, 0.75),
+                  Max = max(Throughput)
+                )
+
+
+kable(grouped_throughputDF, n=100)
 ```
 
+
 \newpage
-## Block Receive Time
+## Block Dissemination Time
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-result=printMeanBarChart(blockReceivedDF)
-result$plot
-result$table
-```
+ggplot(blockReceivedDF, aes(x=as.factor(ConcurrencyConstant), y=ElapsedTime)) + 
+    geom_boxplot(fill="slateblue", alpha=0.2) + 
+    xlab("ConcurrencyConstant") +
+    ylab("Dissemination Time(ms)") +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
 
-\newpage
-## Echo Time
 
-```{r, echo=FALSE, fig.height=4,  warning=FALSE}
+grouped_blockReceivedDF <- blockReceivedDF %>% 
+                group_by(MacroBlockSize, ConcurrencyConstant ) %>%
+                summarise(
+                  Min = min(ElapsedTime),
+                  Q1 = quantile(ElapsedTime, 0.25),
+                  Median = median(ElapsedTime),
+                  Mean = mean(ElapsedTime),
+                  Q3 = quantile(ElapsedTime, 0.75),
+                  Max = max(ElapsedTime)
+                )
 
-result=printMeanBarChart(echoDF)
-result$plot
-result$table
-```
 
-\newpage
-## Accept Time
-
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
-
-result=printMeanBarChart(acceptDF)
-result$plot
-result$table
+kable(grouped_blockReceivedDF, n=100)
 ```

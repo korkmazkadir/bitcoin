@@ -78,7 +78,7 @@ func main() {
 	statList := common.StatList{IPAddress: nodeInfo.IPAddress, PortNumber: nodeInfo.PortNumber, NodeID: nodeInfo.ID, Events: events}
 	registry.UploadStats(statList)
 
-	log.Printf("reached target round count. Shutting down in 5 minute\n")
+	log.Printf("reached target round count. Shutting down in 1 minute\n")
 	time.Sleep(1 * time.Minute)
 
 	bitcoin.PrintLedgerStatus()
