@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/ed25519"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -19,8 +20,10 @@ type Bitcoin struct {
 	subleaderPeerSet network.PeerSet
 	statLogger       *common.StatLogger
 	ledger           *MacroblockLedger
-	publickKey       []byte
-	privateKey       []byte
+
+	subleaderReqMap map[int]common.SubleaderRequest
+	publickKey      []byte
+	privateKey      []byte
 }
 
 func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, subleaderPeerSet network.PeerSet, statLogger *common.StatLogger) *Bitcoin {
@@ -63,7 +66,7 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 
 	miningTimeChan := b.miningTime()
 	blockChan := b.demux.GetBlockChan()
-	subleaderReqChan := b.demux.GetSubleaderRequestChan()
+	subleaderReqChan := b.demux.GetSubleaderRequestChan(block.Height)
 
 	var acceptedProposer []byte
 
@@ -81,17 +84,16 @@ func (b *Bitcoin) MineBlock(block common.Block) ([]common.Block, []byte) {
 
 		case subleaderReq := <-subleaderReqChan:
 
+			if subleaderReq.Height != block.Height {
+				panic(fmt.Errorf("an unordered subleadership request arrived current round %d,  round of the reques %d", block.Height, subleaderReq.Height))
+			}
+
 			if acceptedProposer != nil {
 				break
 			}
 			acceptedProposer = subleaderReq.PuzzleSolver
 
 			log.Printf("[SubleaderReq] Height: %d Solver: %x Index: %d\n", subleaderReq.Height, subleaderReq.PuzzleSolver[:10], subleaderReq.MicroblockIndex)
-
-			if subleaderReq.Height < b.ledger.GetHeight() {
-				log.Printf("Discarts subleadership request for the round %d\n", subleaderReq.Height)
-				break
-			}
 
 			block.Nonce = produceRandomNonce()
 			block.Timestamp = time.Now().UnixMilli()

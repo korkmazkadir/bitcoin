@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "Nov 09, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/bitcoin++_data';
+      workingDir <- '~/Desktop/bitcoin++_data_30rounds';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -27,6 +27,7 @@ An elected leader chooses CL-1 subleaders.
 
 We plot the round latency, throughput and block dissemination statistics.
 
+In each experiment, we have collected 30 rounds of data.
 
 ```{r data, include=FALSE}
 library(dplyr)
@@ -128,12 +129,18 @@ kable(grouped_endOfRound, n=100)
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-ggplot(throughputDF, aes(x=as.factor(ConcurrencyConstant), y=Throughput)) + 
-    geom_boxplot(fill="slateblue", alpha=0.2, outlier.shape=NA) + 
+ggplot(throughputDF, aes(x=as.factor(ConcurrencyConstant), y=Throughput)) +
+    geom_boxplot(fill="slateblue", alpha=0.2, outlier.shape=NA) +
     xlab("ConcurrencyConstant") +
     ylab("Throughput (KB/S)") +
-    scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE)) 
+    scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
 
+
+# ggplot(throughputDF, aes(x=as.factor(ConcurrencyConstant), y=Throughput)) + 
+#     geom_boxplot(fill="slateblue", alpha=0.2) + 
+#     xlab("ConcurrencyConstant") +
+#     ylab("Throughput (KB/S)") +
+#     scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) 
 
 
 grouped_throughputDF <- throughputDF %>% 
@@ -177,4 +184,29 @@ grouped_blockReceivedDF <- blockReceivedDF %>%
 
 
 kable(grouped_blockReceivedDF, n=100)
+```
+
+
+
+\newpage
+## Disseminated Blocks per round
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+blocks_df <- blockReceivedDF %>% 
+              group_by(NodeID, Round, ConcurrencyConstant) %>%
+              summarize(BlockCount = n())
+
+blocks_df <- blocks_df %>%  
+             group_by(ConcurrencyConstant) %>%
+             summarize(MeanBlockCount = mean(BlockCount))
+
+blocks_df$ExtraPercent <- (blocks_df$MeanBlockCount - blocks_df$ConcurrencyConstant)  * 100  / blocks_df$ConcurrencyConstant
+
+ggplot(data=blocks_df, aes(x= as.factor(ConcurrencyConstant), y=blocks_df$ExtraPercent)) +
+  geom_bar(stat="identity")
+
+head(blocks_df)
+
+
 ```
