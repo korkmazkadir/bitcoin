@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "Nov 09, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '~/Desktop/bitcoin++_data_30rounds';
+      workingDir <- '/home/kadir/Desktop/bitcoin++_120seconds_30rounds';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -27,7 +27,6 @@ An elected leader chooses CL-1 subleaders.
 
 We plot the round latency, throughput and block dissemination statistics.
 
-In each experiment, we have collected 30 rounds of data.
 
 ```{r data, include=FALSE}
 library(dplyr)
@@ -92,6 +91,21 @@ throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
 throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
 throughputDF$MacroBlockSize <- throughputDF$MacroBlockSize / 1000 # block size in KB
 throughputDF$Throughput <- throughputDF$MacroBlockSize * throughputDF$ConcurrencyConstant / throughputDF$ElapsedTime
+
+```
+
+
+\newpage
+## Metadata
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+metadata <- endOfRound %>% 
+              group_by(ConcurrencyConstant) %>%
+              summarise(DistinctRoundCount = n_distinct(Round), TotalRoundCount=n())
+
+kable(metadata)
+
 
 ```
 
