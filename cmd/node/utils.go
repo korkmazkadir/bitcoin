@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -100,11 +99,11 @@ func isElectedAsLeader(nodeList []registery.NodeInfo, round int, nodeID int, lea
 
 func createBlock(round int, previousBlockHashes [][]byte, blockSize int, leaderCount int) common.Block {
 
-	payloadSize := int(math.Ceil(float64(blockSize) / float64(leaderCount)))
+	//payloadSize := int(math.Ceil(float64(blockSize) / float64(leaderCount)))
 
 	block := common.Block{
 		Height:          round,
-		Payload:         getRandomByteSlice(payloadSize),
+		Payload:         getRandomByteSlice(blockSize),
 		PrevBlockHashes: previousBlockHashes,
 		Siblings:        make([][]byte, leaderCount),
 	}
