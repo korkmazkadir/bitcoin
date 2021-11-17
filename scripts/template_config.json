@@ -1,8 +1,8 @@
 {
   "NodeCount": 1000,
-  "EndRound": 15,
+  "EndRound": 20,
   "GossipFanout": 8,
   "LeaderCount" : 4,
-  "BlockSize": 1000000,
-  "MiningTime": 200
+  "BlockSize": 500000,
+  "MiningTime": 180
 }

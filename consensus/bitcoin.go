@@ -92,9 +92,10 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 				return blocks
 			}
 
-			if b.updateSiblingsAndPrevBlock(&block) {
-				miningTimeChan = b.miningTime()
-			}
+			b.updateSiblingsAndPrevBlock(&block)
+			//if b.updateSiblingsAndPrevBlock(&block) {
+			//	miningTimeChan = b.miningTime()
+			//}
 
 		case <-miningTimeChan:
 

@@ -1,8 +1,7 @@
 #!/bin/bash
 
 macroblock_sizes=(1)
-concurrency_constants=(1 2 4 8 16)
-chunk_count=128
+concurrency_constants=(16 8 4 2 1)
 
 rm -rf experiments_to_conduct
 mkdir experiments_to_conduct
@@ -10,7 +9,7 @@ mkdir experiments_to_conduct
 file_index=1
 for macroblock_size in "${macroblock_sizes[@]}"
 do
-    macroblock_size_real=$(($macroblock_size * 1000000))
+    macroblock_size_real=500000
     for cc in "${concurrency_constants[@]}"
     do
 
