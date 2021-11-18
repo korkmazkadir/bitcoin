@@ -1,0 +1,216 @@
+---
+title: "Rapidchain++ Statistics"
+author: "Kadir Korkmaz"
+date: "July 12, 2021"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/Users/kadir/Desktop/bitcoin_siblings_180';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'experiment-report.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+
+experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
+
+
+
+colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
+
+
+printSummaryStats <- function(df, column) {
+  summ <- df %>% summarise(min = min(column), mean= mean(column), sd= sd(column), max = max(column))
+  kable(summ)
+}
+
+printConfidenceInterval <- function(column) {
+  r <- CI(column, ci=0.95)
+  kable(r)
+}
+
+
+printMeanBarChart <- function(df){
+    
+  grouped_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+  
+  p <- ggplot(grouped_df, aes(x=BlockSize, y=Mean, group=CC, color=factor(CC))) +
+    geom_line(aes( linetype=factor(CC), color=factor(CC) ))+
+    geom_point() +
+    labs( x = "Macro Block Size (MB)", y = "Mean Elapsed Time (ms)", color = "CC", linetype="CC" )+
+    theme(legend.position="top",legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(labels = as.character(grouped_df$BlockSize), breaks = grouped_df$BlockSize)
+  
+  
+  
+  t <- kable(grouped_df, n=100)
+
+  return( list("plot" = p , "table" = t ))
+}
+
+
+calculateSummaryStats <-function(df){
+  
+    summary_stats_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+    
+    
+  return(summary_stats_df)
+}
+
+
+plot_histogram <- function(df){
+  
+  ggplot(df, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+}
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
+hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
+processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
+endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+
+throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
+throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
+throughputDF$BlockSize <- throughputDF$BlockSize / 1000 # block size in KB
+throughputDF$Throughput <- throughputDF$BlockSize * throughputDF$CC / throughputDF$ElapsedTime
+
+```
+
+## Configuration
+
+We have deployed 1000 nodes on 10 machines from G5K.
+We cap the bandwidth of each process, and add latency to each link(20Mbps, 50ms, RTT=100ms).
+
+The payload size of a microblock is 500.000 bytes. 
+We have used different CC values between 1 and 16.
+Each leader submits a microblock with a full size. 
+A round ends after appending Cl microblocks; therefore, each round Bitcoin++ appends CC * microblock_size bytes to the ledger.
+We have used the siblings mechanism.
+
+
+We have used 180 seconds as mining time, and we have calculated the mining time of an experiments using the following expression:
+mining time = 180 / CC
+
+
+I have used 180 seconds to have results in a short time interval. Also, I have used 500.000 bytes payload to increase the time of block dissemination to compensate the short mining interval.
+
+
+\newpage
+## Round Latency
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
+    geom_boxplot(fill="slateblue", alpha=0.2) + 
+    xlab("ConcurrencyConstant") +
+    ylab("Round Latency(ms)") +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+grouped_endOfRound <- endOfRound %>% 
+                group_by(BlockSize, CC ) %>%
+                summarise(
+                  Min = min(ElapsedTime),
+                  Q1 = quantile(ElapsedTime, 0.25),
+                  Median = median(ElapsedTime),
+                  Mean = mean(ElapsedTime),
+                  Q3 = quantile(ElapsedTime, 0.75),
+                  Max = max(ElapsedTime)
+                )
+kable(grouped_endOfRound, n=100)
+```
+
+
+\newpage
+## Throughput
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
+    geom_boxplot(fill="slateblue", alpha=0.2, outlier.shape=NA) +
+    xlab("ConcurrencyConstant") +
+    ylab("Throughput (KB/S)") 
+    #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
+
+
+
+grouped_throughputDF <- throughputDF %>% 
+                group_by(BlockSize, CC ) %>%
+                summarise(
+                  Min = min(Throughput),
+                  Q1 = quantile(Throughput, 0.25),
+                  Median = median(Throughput),
+                  Mean = mean(Throughput),
+                  Q3 = quantile(Throughput, 0.75),
+                  Max = max(Throughput)
+                )
+kable(grouped_throughputDF, n=100)
+```
+
+
+\newpage
+## Block Dissemination Time
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#plot_histogram(blockReceivedDF)
+kable( calculateSummaryStats(blockReceivedDF) )
+
+```
+
+
+\newpage
+## Block Hop Count
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#plot_histogram(hopCountDF)
+kable( calculateSummaryStats(hopCountDF) )
+
+
+```
+
+
+
+\newpage
+## Bug
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
+
+head(blockReceivedDF_bug, n=100)
+
+
+```
