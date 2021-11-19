@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/bitcoin_siblings_180';
+      workingDir <- '/Users/kadir/Desktop/bitcoin_siblings_600';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -135,11 +135,24 @@ I have used 180 seconds to have results in a short time interval. Also, I have u
 ## Round Latency
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+endOfRound$ElapsedTime <- endOfRound$ElapsedTime / 1000
+
 ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
     geom_boxplot(fill="slateblue", alpha=0.2) + 
     xlab("ConcurrencyConstant") +
     ylab("Round Latency(ms)") +
     scale_y_continuous(labels = function(x) format(x, scientific = FALSE))
+
+#ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
+#    geom_boxplot(fill="slateblue", alpha=0.2) + 
+#    xlab("ConcurrencyConstant") +
+#    ylab("Round Latency(ms)") +
+#    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+#    geom_hline( yintercept=600, linetype="dashed", color = "red") +
+#    scale_y_continuous(breaks = sort(c(0,1000,2000, 600)))
+
+
 grouped_endOfRound <- endOfRound %>% 
                 group_by(BlockSize, CC ) %>%
                 summarise(
@@ -158,16 +171,9 @@ kable(grouped_endOfRound, n=100)
 ## Throughput
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
-ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
-    geom_boxplot(fill="slateblue", alpha=0.2, outlier.shape=NA) +
-    xlab("ConcurrencyConstant") +
-    ylab("Throughput (KB/S)") 
-    #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
-
-
 
 grouped_throughputDF <- throughputDF %>% 
-                group_by(BlockSize, CC ) %>%
+                group_by( CC ) %>%
                 summarise(
                   Min = min(Throughput),
                   Q1 = quantile(Throughput, 0.25),
@@ -176,6 +182,19 @@ grouped_throughputDF <- throughputDF %>%
                   Q3 = quantile(Throughput, 0.75),
                   Max = max(Throughput)
                 )
+
+grouped_throughputDF$MedianRounded <- signif(grouped_throughputDF$Median, digits = 3) 
+
+ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
+    geom_boxplot(fill="slateblue", alpha=0.2) +
+    geom_text(data =grouped_throughputDF, aes(x=as.factor(CC), y = MedianRounded, label = MedianRounded), size = 2.8, vjust = 0.3, hjust = 3.1) +
+    xlab("ConcurrencyConstant") +
+    ylab("Throughput (KB/S)") 
+    #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
+
+
+
+
 kable(grouped_throughputDF, n=100)
 ```
 
