@@ -1,0 +1,197 @@
+---
+title: "Rapidchain++ Statistics"
+author: "Kadir Korkmaz"
+date: "July 12, 2021"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/home/kadir/Desktop/bitcoin_siblings_600';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'figure-export.pdf')) })
+---
+
+```{r setup, include=FALSE}
+
+
+figureExportFolder <- "/home/kadir/Desktop/bitcoin_siblings_600"
+  
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+
+experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
+
+
+
+colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
+
+
+printSummaryStats <- function(df, column) {
+  summ <- df %>% summarise(min = min(column), mean= mean(column), sd= sd(column), max = max(column))
+  kable(summ)
+}
+
+printConfidenceInterval <- function(column) {
+  r <- CI(column, ci=0.95)
+  kable(r)
+}
+
+
+printMeanBarChart <- function(df){
+    
+  grouped_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+  
+  p <- ggplot(grouped_df, aes(x=BlockSize, y=Mean, group=CC, color=factor(CC))) +
+    geom_line(aes( linetype=factor(CC), color=factor(CC) ))+
+    geom_point() +
+    labs( x = "Macro Block Size (MB)", y = "Mean Elapsed Time (ms)", color = "CC", linetype="CC" )+
+    theme(legend.position="top",legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(labels = as.character(grouped_df$BlockSize), breaks = grouped_df$BlockSize)
+  
+  
+  
+  t <- kable(grouped_df, n=100)
+
+  return( list("plot" = p , "table" = t ))
+}
+
+
+calculateSummaryStats <-function(df){
+  
+    summary_stats_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+    
+    
+  return(summary_stats_df)
+}
+
+
+plot_histogram <- function(df){
+  
+  ggplot(df, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+}
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
+hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
+processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
+endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+
+throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
+throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
+throughputDF$BlockSize <- throughputDF$BlockSize / 1000 # block size in KB
+throughputDF$Throughput <- throughputDF$BlockSize * throughputDF$CC / throughputDF$ElapsedTime
+
+```
+
+
+
+\newpage
+## Round Latency
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+pdf(file =  sprintf("%s/%s", figureExportFolder, "bitcoin_lat.pdf"), height = 4, width = 6)
+
+endOfRound$ElapsedTime <- endOfRound$ElapsedTime / 1000
+
+ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
+    geom_boxplot(fill="slateblue", alpha=0.2) + 
+    xlab("Cl") +
+    ylab("Round Latency (Seconds)") +
+    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+    theme_bw() +
+    expand_limits(x = 0, y = 0) 
+
+
+#ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
+#    geom_boxplot(fill="slateblue", alpha=0.2) + 
+#    xlab("ConcurrencyConstant") +
+#    ylab("Round Latency(ms)") +
+#    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
+#    geom_hline( yintercept=600, linetype="dashed", color = "red") +
+#    scale_y_continuous(breaks = sort(c(0,1000,2000, 600)))
+
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(BlockSize, CC ) %>%
+                summarise(
+                  Min = min(ElapsedTime),
+                  Q1 = quantile(ElapsedTime, 0.25),
+                  Median = median(ElapsedTime),
+                  Mean = mean(ElapsedTime),
+                  Q3 = quantile(ElapsedTime, 0.75),
+                  Max = max(ElapsedTime)
+                )
+
+dev.off()
+
+kable(grouped_endOfRound, n=100)
+```
+
+
+\newpage
+## Throughput
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+pdf(file = sprintf("%s/%s", figureExportFolder, "bitcoin_thr.pdf"), height = 4, width = 6)
+
+grouped_throughputDF <- throughputDF %>% 
+                group_by( CC ) %>%
+                summarise(
+                  Min = min(Throughput),
+                  Q1 = quantile(Throughput, 0.25),
+                  Median = median(Throughput),
+                  Mean = mean(Throughput),
+                  Q3 = quantile(Throughput, 0.75),
+                  Max = max(Throughput)
+                )
+
+grouped_throughputDF$MedianRounded <- signif(grouped_throughputDF$Median, digits = 3) 
+
+ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
+    geom_boxplot(fill="slateblue", alpha=0.2) +
+    geom_text(data =grouped_throughputDF, aes(x=as.factor(CC), y = MedianRounded, label = MedianRounded), size = 2.8, vjust = 0.3, hjust = 2.8) +
+    xlab("Cl") +
+    ylab("Throughput (KB/Second)") +
+    theme_bw() +
+    expand_limits(x = 0, y = 0)
+
+
+dev.off()
+
+kable(grouped_throughputDF, n=100)
+```
