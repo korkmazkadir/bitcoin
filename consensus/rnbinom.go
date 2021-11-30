@@ -21,6 +21,8 @@ import (
 
 // https://github.com/SurajGupta/r-source/blob/master/src/nmath/rnbinom.c
 // https://github.com/SurajGupta/r-source/blob/a28e609e72ed7c47f6ddfbb86c85279a0750f0b7/src/nmath/standalone/sunif.c
+// install r-mathlib using following command
+// sudo apt-get install -y r-mathlib
 
 type NBinom struct {
 	seedString string
