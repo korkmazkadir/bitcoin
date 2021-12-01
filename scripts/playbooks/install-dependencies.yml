@@ -13,10 +13,10 @@
         name: iproute2
         state: present
 
-    - name: Install r-mathlib (state=present is optional)
+    - name: Update repositories cache and install r-mathlib package
       apt:
         name: r-mathlib
-        state: present
+        update_cache: yes
 
     - name: Add or modify nofile soft limit for the user root
       community.general.pam_limits:
