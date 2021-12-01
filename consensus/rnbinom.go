@@ -46,7 +46,6 @@ func NewNBinom(seedString string, size int, prob float64) *NBinom {
 
 func (n *NBinom) Random() int {
 	result := C.rnbinom_c(C.long(n.seed()), C.long(n.seed()), C.int(n.size), C.double(n.prob))
-
 	return int(result)
 }
 
