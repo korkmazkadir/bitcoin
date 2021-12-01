@@ -4,8 +4,6 @@ import (
 	"crypto/ed25519"
 	"fmt"
 	"log"
-	"math"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -22,9 +20,14 @@ type Bitcoin struct {
 	ledger     *Ledger
 	publickKey []byte
 	privateKey []byte
+	nbinom     *NBinom
 }
 
-func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, statLogger *common.StatLogger) *Bitcoin {
+func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, statLogger *common.StatLogger, nodeID int) *Bitcoin {
+
+	// probability is calculated for the simulator
+	// MiningTime is in seconds, I have converted it into ms by multiplying 1000
+	prob := float64(nodeConfig.LeaderCount) / float64(nodeConfig.MiningTime*1000*nodeConfig.NodeCount+nodeConfig.LeaderCount)
 
 	consensus := &Bitcoin{
 		demux:      demux,
@@ -32,6 +35,7 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 		peerSet:    peerSet,
 		statLogger: statLogger,
 		ledger:     NewLedger(nodeConfig.LeaderCount),
+		nbinom:     NewNBinom(fmt.Sprintf("%d", nodeID), 1, prob),
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(nil)
@@ -195,6 +199,7 @@ func (b *Bitcoin) disseminate() {
 	}
 }
 
+/*
 func (b *Bitcoin) miningTime() <-chan time.Time {
 
 	// MiningTime / CC
@@ -202,6 +207,13 @@ func (b *Bitcoin) miningTime() <-chan time.Time {
 	simulatedMiningTime := int(-math.Log(1.0-rand.Float64()) * float64(expected) * 1 / (1 / float64(b.config.NodeCount)))
 	log.Printf("[expected: %d]Mining time is %d \n", expected, simulatedMiningTime)
 	return time.After(time.Duration(simulatedMiningTime) * time.Second)
+}*/
+
+func (b *Bitcoin) miningTime() <-chan time.Time {
+
+	simulatedMiningTime := b.nbinom.Random()
+	log.Printf("[expected: %d ms]Mining time is %d ms\n", b.config.MiningTime*1000, simulatedMiningTime)
+	return time.After(time.Duration(simulatedMiningTime) * time.Millisecond)
 }
 
 func (b *Bitcoin) PrintLedgerStatus() {

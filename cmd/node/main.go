@@ -66,7 +66,8 @@ func main() {
 
 	peerSet := createPeerSet(nodeList, nodeConfig.GossipFanout, nodeInfo)
 	statLogger := common.NewStatLogger(nodeInfo.ID)
-	bitcoin := consensus.NewBitcoin(demux, nodeConfig, peerSet, statLogger)
+	// pass node id to use as the seed of pseudo randomnumber generator
+	bitcoin := consensus.NewBitcoin(demux, nodeConfig, peerSet, statLogger, nodeInfo.ID)
 
 	runConsensus(bitcoin, nodeConfig.EndRound, nodeConfig.NodeCount, nodeConfig.LeaderCount, nodeConfig.BlockSize)
 

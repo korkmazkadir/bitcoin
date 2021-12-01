@@ -13,6 +13,11 @@
         name: iproute2
         state: present
 
+    - name: Install r-mathlib (state=present is optional)
+      apt:
+        name: r-mathlib
+        state: present
+
     - name: Add or modify nofile soft limit for the user root
       community.general.pam_limits:
         domain: root
