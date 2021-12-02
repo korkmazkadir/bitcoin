@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/bitcoin_siblings_600';
+      workingDir <- '/Users/kadir/Downloads/bitcoin_with_new_mining_600';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -198,6 +198,32 @@ ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
 kable(grouped_throughputDF, n=100)
 ```
 
+
+\newpage
+## Average number of Delivered Blocks per Round
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+#blockReceivedDF %>% count(BlockSize, CC, Round, NodeID)
+
+block_count_df <- blockReceivedDF %>% 
+                    count(BlockSize, CC, Round, NodeID) %>% 
+                          group_by( BlockSize, CC  ) %>%
+                            summarise(
+                              MeanBlockCount = mean(n)
+                            )
+
+
+ggplot(block_count_df, aes(fill=factor(CC), y=factor(MeanBlockCount), x=factor(BlockSize))) + 
+    geom_bar(position="dodge", stat="identity")
+
+
+kable(head(block_count_df, n=100))
+
+cdf <- blockReceivedDF %>% count(BlockSize, CC, NodeID) %>% group_by( BlockSize, CC, n  ) %>% count()
+kable(cdf)
+
+
+```
 
 \newpage
 ## Block Dissemination Time
