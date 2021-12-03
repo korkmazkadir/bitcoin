@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "December 03, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '~/Downloads/bitcoin_data_3_12_2021';
+      workingDir <- '/home/kadir/Desktop/bitcoin_with_new_simulator_copy';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -110,6 +110,9 @@ blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
 hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
 processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
 endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+# This is to calculate the second version of throughput
+endOfRound2 <-data.frame(endOfRound)
+
 
 throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
 throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
@@ -242,6 +245,58 @@ ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
 
 
 kable(grouped_throughputDF, n=100)
+```
+
+\newpage
+## Throughput-2
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+
+throughputDF <- endOfRound2 %>% group_by( ExpType, Difficulty, BlockSize, CC, NodeID )%>%
+                summarise(
+                  RoundCount=n(),
+                  TotalTime=sum(ElapsedTime)
+                )
+
+throughputDF$TotalTime <- throughputDF$TotalTime  / 1000
+throughputDF$BlockSize <- throughputDF$BlockSize  / 1000
+
+
+throughputDF <- throughputDF %>% mutate(
+  Throughput=if_else(Difficulty == 600, 
+                     BlockSize * CC * RoundCount / TotalTime, 
+                     BlockSize * RoundCount / TotalTime )
+  )
+
+
+grouped_throughputDF <- throughputDF %>% 
+                group_by( ExpType, CC ) %>%
+                summarise(
+                  Min = min(Throughput),
+                  Q1 = quantile(Throughput, 0.25),
+                  Median = median(Throughput),
+                  Mean = mean(Throughput),
+                  Q3 = quantile(Throughput, 0.75),
+                  Max = max(Throughput)
+                )
+
+grouped_throughputDF$MedianRounded <- signif(grouped_throughputDF$Median, digits = 3) 
+
+ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
+    geom_boxplot(fill="slateblue", alpha=0.2) +
+    #geom_text(data =grouped_throughputDF, aes(x=as.factor(CC), y = MedianRounded, label = MedianRounded), size = 2.8, vjust = 0.3, hjust = 2.5) +
+    xlab("ConcurrencyConstant") +
+    ylab("Throughput (KB/S)") +
+    expand_limits(x = 0, y = 0)+
+    facet_wrap(~ExpType)
+    #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
+
+
+
+
+kable(grouped_throughputDF, n=100)
+
 ```
 
 
