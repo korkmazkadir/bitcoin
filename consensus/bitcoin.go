@@ -27,7 +27,7 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 
 	// probability is calculated for the simulator
 	// MiningTime is in seconds, I have converted it into ms by multiplying 1000
-	prob := float64(nodeConfig.LeaderCount) / float64(nodeConfig.MiningTime*1000*nodeConfig.NodeCount+nodeConfig.LeaderCount)
+	prob := float64(nodeConfig.LeaderCount) / (nodeConfig.MiningTime*float64(1000*nodeConfig.NodeCount) + float64(nodeConfig.LeaderCount))
 
 	consensus := &Bitcoin{
 		demux:      demux,
@@ -212,7 +212,7 @@ func (b *Bitcoin) miningTime() <-chan time.Time {
 func (b *Bitcoin) miningTime() <-chan time.Time {
 
 	simulatedMiningTime := b.nbinom.Random()
-	log.Printf("[expected: %d ms]Mining time is %d ms\n", b.config.MiningTime*1000, simulatedMiningTime)
+	log.Printf("[expected: %f ms]Mining time is %d ms\n", b.config.MiningTime*1000, simulatedMiningTime)
 	return time.After(time.Duration(simulatedMiningTime) * time.Millisecond)
 }
 

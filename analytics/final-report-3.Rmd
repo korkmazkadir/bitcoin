@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "July 12, 2021"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Downloads/bitcoin_with_new_mining_600';
+      workingDir <- '~/Desktop/classical_bitcoin_reduced_difficulty';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -25,7 +25,7 @@ experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
 
 
 
-colnames(experimentDF) <- c( "BlockSize", "CC", "ChunkSize",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
+colnames(experimentDF) <- c( "BlockSize", "CC", "Difficulty",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
 
 
 printSummaryStats <- function(df, column) {
@@ -136,9 +136,14 @@ I have used 180 seconds to have results in a short time interval. Also, I have u
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
-endOfRound$ElapsedTime <- endOfRound$ElapsedTime / 1000
 
-ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
+
+endOfRound$ElapsedTime <- endOfRound$ElapsedTime / 1000
+#endOfRound$Type[data$Difficulty!=600] <- "ClassicBitcoin"
+
+#https://www.r-graph-gallery.com/265-grouped-boxplot-with-ggplot2.html
+#https://www.r-graph-gallery.com/223-faceting-with-ggplot2.html
+ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime )) + 
     geom_boxplot(fill="slateblue", alpha=0.2) + 
     xlab("ConcurrencyConstant") +
     ylab("Round Latency(ms)") +

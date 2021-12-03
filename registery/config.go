@@ -18,7 +18,7 @@ type NodeConfig struct {
 
 	BlockSize int
 
-	MiningTime int
+	MiningTime float64
 }
 
 func (nc NodeConfig) Hash() []byte {

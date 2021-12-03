@@ -57,7 +57,7 @@ func main() {
 func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *os.File) {
 
 	scanner := bufio.NewScanner(stats)
-	prefix := fmt.Sprintf("%d\t%d\t%d\t", config.BlockSize, config.LeaderCount, config.MiningTime)
+	prefix := fmt.Sprintf("%d\t%d\t%f\t", config.BlockSize, config.LeaderCount, config.MiningTime)
 	for scanner.Scan() {
 
 		statLine := scanner.Text()
