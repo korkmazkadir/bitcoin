@@ -1,10 +1,10 @@
 ---
 title: "Bitcoin++ vs Bitcoin with Reduced Difficulty Statistics"
 author: "Kadir Korkmaz"
-date: "December 03, 2021"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/home/kadir/Desktop/bitcoin_with_new_simulator_copy';
+      workingDir <- '/home/kadir/Desktop/high_cc_values';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -101,9 +101,14 @@ plot_histogram <- function(df){
 
 ```{r, echo=FALSE, warning=FALSE}
 #TODO: add explanation
-experimentDF <-  experimentDF %>% add_column( ExpType=if_else(experimentDF$Difficulty == 600, "Classic", "Reduced"))
+BitcoinPP <- "Bitcoin++"
+BitcoinReducedDiff <- "BitcoinReducedDiff"
+experimentDF <-  experimentDF %>% add_column( ExpType=if_else(experimentDF$Difficulty == 600, BitcoinPP, BitcoinReducedDiff))
 #TODO: add explanation
 experimentDF <- experimentDF %>% mutate(CC=if_else(experimentDF$Difficulty == 600, experimentDF$CC, as.integer( 600 / experimentDF$Difficulty) ))
+
+########################################################
+##experimentDF <- experimentDF %>% filter(Round < 320)##
 
 
 blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
@@ -126,52 +131,25 @@ throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficul
 
 \newpage
 
-### Background Information
-
-In Bitcoin, a single block is appended to the ledger on average per unit time.
-
-Bitcoin++ improves the Bitcoin protocol by electing multiple leaders per unit time, and it appends multiple blocks (CC blocks) per unit time.
-To this end, Bitcoin++ decreases the difficulty of the crypto puzzles to elect multiple leaders per unit time. 
-Also, nodes in the Bitcoin++ appends CC blocks to the ledger per round.  **We put engineering effort to build the Bitcoin++**
-
-
-### Questions to answer
-
-Q1) Can we obtain the performance benefit of Bitcoin++ from classical Bitcoin by just decreasing the difficulty of crypto puzzles?
-
-Q1) Can we compare the quality of provided end results of Bitcoin++ and classical Bitcoin with reduced difficulty?
+### Background
+In this report we have compared Bitcoin++ with Bitcoin Reduced Difficulty.
 
 ### Configuration
-We have deployed 1005 nodes on 15 machines from G5K.
-We cap the bandwidth of each process and add latency to each link(20Mbps, 50ms, RTT=100ms).
+We have deployed 1005 nodes per each experiments.
+We deployed the nodes on 15 machines from G5K. We cap the bandwidth of each process (20Mbps), and we have added latency to communication links (50ms).
 
-We have conducted 2 sets of experiments: Bitcoin++ experiments and Classical Bitcoin with Reduced difficulty experiments.
-In the Bitcoin++ experiments, we deployed Bitcoin++ using different CC values. In classic Bitcoin with reduced difficulty experiments,
-we have deployed classic Bitcoin nodes, and we have decreased the difficulty in a way that matches the difficulty levels in the Bitcoin++ experiments.
-For each experiment, we have collected 30 rounds of data.
+For Bitcon++ experiments we have collected 30 rounds of data.
+For Bitcoin experiments we collected 380, 240, and 120 rounds of data to match the number of disseminated block with corresponding Bitcoin++ experiment.
 
-To emulate mining, we have used the mining sımulator we have designed together using the negative binomial distribution. 
-Also, nodes are reusing the same mining times for the same configuration.
+### Latency and Throughput measurements
 
-### Experiment Set-1: Bitcoin++
+Each node locally measures the round duration, and we have collected these measurements to create the latency plot presented here.
+For the throughput, at the end of the experiment, each node calculates the throughput by dividing the size of appended data with total elapsed time.
 
-We have used CC values of 4, 8, 16, and block size 1MB.
-In the report, plots marked with **Classic** tag are belong to Bitcoin++ results.
+### Forks
+We have measured the average number of disseminated blocks per round for each experiment.
 
-### Experiment Set-2: Bitcoin with Reduced Mining Difficulty
 
-We have used block size 1MB, and we have decreased the crypto puzzle difficulty to match the crypto puzzle difficulties of Bitcoin++.
-In the report, plots marked with **Reduced** tag are belongs to Bitcoin with reduced difficulty results.
-(In this set of experiments, CC values are used to mark the data to make it easy to compare so they do not have any special meaning because Bitcoin works with single leader per round.)
-
-### Conclusion
-
-In terms of latency, Bitcoin with reduced difficulty provides better results compared to Bitcoin++. This is due to the fact that Bitcoin++ appends more data but it waits on average 600 seconds to append. On the contrary, classical Bitcoin with reduced difficulty appends 1MB blocks more frequently.
-**In Bitcoin with reduced difficulty, the confirmation time is decreasing which is a desired behavior.**
-
-In terms of throughput, if we compare median throughput values, Bitcoin with reduced difficulty provides the same results as Bitcoin++, If we compare mean throughput values, Bitcoin with reduced difficulty provides better results.
-
-In terms of forks and disseminated useful data, Bitcoin with reduced latency always provides better results compared to Bitcoin++. Bitcoin with reduced latency causes fewer forks compared to Bitcoin++.
 
 \newpage
 ## Round Latency
@@ -192,14 +170,6 @@ ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime )) +
     scale_y_continuous(labels = function(x) format(x, scientific = FALSE)) +
     facet_wrap(~ExpType)
 
-#ggplot(endOfRound, aes(x=as.factor(CC), y=ElapsedTime)) + 
-#    geom_boxplot(fill="slateblue", alpha=0.2) + 
-#    xlab("ConcurrencyConstant") +
-#    ylab("Round Latency(ms)") +
-#    scale_y_continuous(labels = function(x) format(x, scientific = FALSE))+
-#    geom_hline( yintercept=600, linetype="dashed", color = "red") +
-#    scale_y_continuous(breaks = sort(c(0,1000,2000, 600)))
-
 
 grouped_endOfRound <- endOfRound %>% 
                 group_by(ExpType,BlockSize, CC ) %>%
@@ -215,40 +185,40 @@ kable(grouped_endOfRound, n=100)
 ```
 
 
+<!-- \newpage -->
+<!-- ## Throughput -->
+
+<!-- ```{r, echo=FALSE, fig.height=4, warning=FALSE} -->
+
+<!-- grouped_throughputDF <- throughputDF %>%  -->
+<!--                 group_by( ExpType, CC ) %>% -->
+<!--                 summarise( -->
+<!--                   Min = min(Throughput), -->
+<!--                   Q1 = quantile(Throughput, 0.25), -->
+<!--                   Median = median(Throughput), -->
+<!--                   Mean = mean(Throughput), -->
+<!--                   Q3 = quantile(Throughput, 0.75), -->
+<!--                   Max = max(Throughput) -->
+<!--                 ) -->
+
+<!-- grouped_throughputDF$MedianRounded <- signif(grouped_throughputDF$Median, digits = 3)  -->
+
+<!-- ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) + -->
+<!--     geom_boxplot(fill="slateblue", alpha=0.2) + -->
+<!--     #geom_text(data =grouped_throughputDF, aes(x=as.factor(CC), y = MedianRounded, label = MedianRounded), size = 2.8, vjust = 0.3, hjust = 2.5) + -->
+<!--     xlab("ConcurrencyConstant") + -->
+<!--     ylab("Throughput (KB/S)") + -->
+<!--     facet_wrap(~ExpType) -->
+<!--     #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE)) -->
+
+
+
+
+<!-- kable(grouped_throughputDF, n=100) -->
+<!-- ``` -->
+
 \newpage
 ## Throughput
-
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
-
-grouped_throughputDF <- throughputDF %>% 
-                group_by( ExpType, CC ) %>%
-                summarise(
-                  Min = min(Throughput),
-                  Q1 = quantile(Throughput, 0.25),
-                  Median = median(Throughput),
-                  Mean = mean(Throughput),
-                  Q3 = quantile(Throughput, 0.75),
-                  Max = max(Throughput)
-                )
-
-grouped_throughputDF$MedianRounded <- signif(grouped_throughputDF$Median, digits = 3) 
-
-ggplot(throughputDF, aes(x=as.factor(CC), y=Throughput)) +
-    geom_boxplot(fill="slateblue", alpha=0.2) +
-    #geom_text(data =grouped_throughputDF, aes(x=as.factor(CC), y = MedianRounded, label = MedianRounded), size = 2.8, vjust = 0.3, hjust = 2.5) +
-    xlab("ConcurrencyConstant") +
-    ylab("Throughput (KB/S)") +
-    facet_wrap(~ExpType)
-    #+scale_y_continuous(limits = quantile(throughputDF$Throughput, c(0.1, 0.9)), labels = function(x) format(x, scientific = FALSE))
-
-
-
-
-kable(grouped_throughputDF, n=100)
-```
-
-\newpage
-## Throughput-2
 
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
@@ -301,7 +271,7 @@ kable(grouped_throughputDF, n=100)
 
 
 \newpage
-## Average number of Delivered Blocks per Round
+## Average number of Delivered Blocks per Round (Fork statistics)
 ```{r, echo=FALSE, fig.height=4, warning=FALSE}
 
 #blockReceivedDF %>% count(BlockSize, CC, Round, NodeID)
@@ -314,17 +284,22 @@ block_count_df <- blockReceivedDF %>%
                             )
 
 
+
+
 ggplot(block_count_df, aes(fill=factor(CC), y=factor(MeanBlockCount), x=factor(BlockSize))) + 
     geom_bar(position="dodge", stat="identity")+
     facet_wrap(~ExpType)
 
 
-kable(head(block_count_df, n=100))
+block_count_df <- block_count_df %>% mutate(ExtraCostPercent=if_else(ExpType == BitcoinPP, (MeanBlockCount - CC)*100/CC, (MeanBlockCount - 1)*100 ))
 
-cdf <- blockReceivedDF %>% count(ExpType,BlockSize, CC, NodeID) %>% group_by( ExpType,BlockSize, CC, n  ) %>% count()
-names(cdf)[4]<-"BlockCount"
-names(cdf)[5]<-"NodeCount"
-kable(cdf)
+
+kable(block_count_df)
+
+# cdf <- blockReceivedDF %>% count(ExpType,BlockSize, CC, NodeID) %>% group_by( ExpType,BlockSize, CC, n  ) %>% count()
+# names(cdf)[4]<-"BlockCount"
+# names(cdf)[5]<-"NodeCount"
+# kable(cdf)
 
 
 ```
@@ -353,13 +328,13 @@ kable( calculateSummaryStats(hopCountDF) )
 
 
 
-\newpage
-## Bug
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
+<!-- \newpage -->
+<!-- ## Bug -->
+<!-- ```{r, echo=FALSE, fig.height=4, warning=FALSE} -->
 
-blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime)
+<!-- blockReceivedDF_bug <- processingTimeDF %>% filter(ElapsedTime > 20000) %>% select(NodeID,Round,Type,ElapsedTime) -->
 
-head(blockReceivedDF_bug, n=100)
+<!-- head(blockReceivedDF_bug, n=100) -->
 
 
-```
+<!-- ``` -->
