@@ -1,0 +1,248 @@
+---
+title: "Bitcoin++ vs Bitcoin with Reduced Difficulty Statistics"
+author: "Kadir Korkmaz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/Users/kadir/Desktop/BitcoinStats';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'experiment-report.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(tibble)
+
+
+experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
+
+
+
+colnames(experimentDF) <- c( "BlockSize", "CC", "Difficulty",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
+
+
+printSummaryStats <- function(df, column) {
+  summ <- df %>% summarise(min = min(column), mean= mean(column), sd= sd(column), max = max(column))
+  kable(summ)
+}
+
+printConfidenceInterval <- function(column) {
+  r <- CI(column, ci=0.95)
+  kable(r)
+}
+
+
+printMeanBarChart <- function(df){
+    
+  grouped_df <- df %>% 
+                  group_by(BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+  
+  p <- ggplot(grouped_df, aes(x=BlockSize, y=Mean, group=CC, color=factor(CC))) +
+    geom_line(aes( linetype=factor(CC), color=factor(CC) ))+
+    geom_point() +
+    labs( x = "Macro Block Size (MB)", y = "Mean Elapsed Time (ms)", color = "CC", linetype="CC" )+
+    theme(legend.position="top",legend.box="vertical", legend.margin=margin())+
+    scale_x_continuous(labels = as.character(grouped_df$BlockSize), breaks = grouped_df$BlockSize)
+  
+  
+  
+  t <- kable(grouped_df, n=100)
+
+  return( list("plot" = p , "table" = t ))
+}
+
+
+calculateSummaryStats <-function(df){
+  
+    summary_stats_df <- df %>% 
+                  group_by(ExpType,BlockSize, CC ) %>%
+                  summarise(
+                    Min = min(ElapsedTime),
+                    Q1 = quantile(ElapsedTime, 0.25),
+                    Median = median(ElapsedTime),
+                    Mean = mean(ElapsedTime),
+                    Q3 = quantile(ElapsedTime, 0.75),
+                    Max = max(ElapsedTime),
+                    SD =sd(ElapsedTime)
+                  )
+    
+    
+  return(summary_stats_df)
+}
+
+
+plot_histogram <- function(df){
+  
+  ggplot(df, aes(x=ElapsedTime))+
+  geom_histogram(color="darkblue", fill="lightblue")
+
+}
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+#TODO: add explanation
+BitcoinPP <- "Bitcoin++"
+BitcoinReducedDiff <- "BitcoinReducedDiff"
+experimentDF <-  experimentDF %>% add_column( ExpType=if_else(experimentDF$Difficulty == 600, BitcoinPP, BitcoinReducedDiff))
+#TODO: add explanation
+experimentDF <- experimentDF %>% mutate(CC=if_else(experimentDF$Difficulty == 600, experimentDF$CC, as.integer( 600 / experimentDF$Difficulty) ))
+
+########################################################
+ experimentDF <- experimentDF %>% filter(Round <= 30)
+
+
+blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
+hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
+processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
+endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+# This is to calculate the second version of throughput
+endOfRound2 <-data.frame(endOfRound)
+
+
+throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
+throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
+throughputDF$BlockSize <- throughputDF$BlockSize / 1000 # block size in KB
+
+#Calculates throughput
+throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficulty == 600, throughputDF$BlockSize * throughputDF$CC / throughputDF$ElapsedTime, throughputDF$BlockSize / throughputDF$ElapsedTime ))
+#throughputDF$Throughput <- throughputDF$BlockSize * throughputDF$CC / throughputDF$ElapsedTime
+
+```
+
+\newpage
+
+### Fork Comparision: Bitcoin++ vs Bitcoin Reduced Difficulty
+In my previous report, I have provided following values as mean block count per round:
+
+| Protocol      |CC| Mean Block Count |
+| ------------- |--| ---------------- |
+| Bitcoin++      |16| 17.69 |
+| BitcoinRed.Diff   |16| 1.56 |
+
+
+From these results we have calculated following orphan block percentage:
+
+| Protocol      |CC| Mean Block Count | Orphan Block Percent
+| ------------- |--| ---------------- | ---------------- |
+| Bitcoin++      |16| 17.69 | 10.5625 |
+| BitcoinRed.Diff   |16| 1.56 | 56 |
+
+From these results, we have conclude that Bitcoin++ creates less forks than the Bitcoin with Reduced difficulty.
+
+I believe, this inference was wrong. My argument as follows:
+
+-- Bitcoin with Reduced Diff. has a mean block count 1.56. Average number of extra block per round is 0.56 which is less than 1; therefore nodes agreed on a single block time to time (On some rounds)
+
+-- Bitcoin++ has a mean block count 17.69. Average number of extra block per round is 1.69 which is bigger than 1; therefore we had a macroblock forks on all rounds (I was not expecting any round with a single macroblock decided at the end of the round).  
+
+To test my argument, I have reprocessed the data, and I have count the distinct macroblocks blocks decided at the end of each round. My logs contains elapsed time for a round, and a hash that belongs to the decided block at the end of the round.
+
+In this report, I just used the first 30 rounds of data for all experiments.
+
+If you look the *Average Number of Decided Blocks On Each Round* page, In the table, we have following values for CC16
+
+| Protocol      |CC| Mean Decided Block Count |
+| ------------- |--| ---------------- |
+| Bitcoin++      |16| 3.200000 |
+| BitcoinRed.Diff   |16| 1.733333 |
+
+For Bitcoin++, Mean Decided Block Count per Round means that nodes deciding on 3.2 different macroblock per rounds (on average). 
+
+For Bitcoin++, Mean Decided Block Count per Round means that nodes deciding on 1.73 different macroblock per rounds (on average).
+
+On the second page, Number of Decided Blocks On Each Round, I have provided raw values for each round. From these results you can see that nodes in Bitcoin with Reduced Latency deciding on a single block more frequently than Bitcoin++:
+
+In 30 rounds, Bitcoin++ decided 5 times on the same block.
+On the other hand,in 30 rounds, Bitcoin with reduced diff. decides on 16 times on the same block.
+
+(You can get this numbers, by counting the number of rounds that is decided on a single block.)
+
+As a result, I believe that the conclusion we had before was wrong because Bitcoin++ has more frequent forks than Bitcoin with reduced latency.
+
+\newpage
+## Average Number of Decided Blocks On Each Round
+
+```{r, echo=FALSE}
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(ExpType,BlockSize, CC, Round ) %>%
+                summarise(
+                  DecidedBlockCount = n_distinct(BlockHash)
+                ) 
+                   
+grouped_endOfRound <- grouped_endOfRound %>%
+                      group_by(ExpType,BlockSize, CC ) %>%
+                      summarise(
+                        MeanDecidedBlockCountPerRound = mean(DecidedBlockCount)
+                      )
+          
+
+kable(grouped_endOfRound, n=100)
+```
+
+
+\newpage
+## Number of Decided Blocks On Each Round
+
+```{r, echo=FALSE}
+
+grouped_endOfRound <- endOfRound %>%
+                group_by(ExpType,BlockSize, CC, Round ) %>%
+                summarise(
+                  DecidedBlockCount = n_distinct(BlockHash)
+                )
+
+
+kable(grouped_endOfRound, n=100)
+```
+
+
+
+
+\newpage
+## Number of rounds a single block decided
+
+```{r, echo=FALSE}
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(ExpType,BlockSize, CC, Round ) %>%
+                summarise(
+                  DecidedBlockCount = n_distinct(BlockHash)
+                ) %>% group_by(ExpType,BlockSize, CC ) %>%
+                summarise(
+                  SingleBlockDecidedRoundCount=sum(DecidedBlockCount==1)
+                )
+
+max_rounds  <-  endOfRound %>% 
+                group_by(ExpType,BlockSize, CC ) %>%
+                summarise(
+                  MaxRound = max(Round)
+                )
+
+
+kable(max_rounds, n=100)
+
+kable(grouped_endOfRound, n=100)
+```
+
+
