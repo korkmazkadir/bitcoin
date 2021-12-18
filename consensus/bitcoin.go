@@ -35,7 +35,9 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 		peerSet:    peerSet,
 		statLogger: statLogger,
 		ledger:     NewLedger(nodeConfig.LeaderCount),
-		nbinom:     NewNBinom(fmt.Sprintf("%d", nodeID), 1, prob),
+		//nbinom:     NewNBinom(fmt.Sprintf("%d", nodeID), 1, prob),
+		//TODO: revert this back
+		nbinom: NewNBinom(fmt.Sprintf("%d", time.Now().UnixMilli()), 1, prob),
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(nil)
