@@ -57,17 +57,19 @@ func GetFullestMacroblock(cc int, blocks []common.Block) ([]common.Block, int, [
 		i := MicroBlockIndex(block.Nonce, block.Siblings, cc)
 
 		//TODO: I want to do this check val[i] == common.Block{}
-		if len(val[i].Payload) > 0 {
+		// the compararison is added to add priority to blocks
+		if len(val[i].Payload) > 0 && bytes.Compare(val[i].Hash(), block.Hash()) > 0 {
 			continue
 		}
 
+		// we need to increase the count once
+		if len(val[i].Payload) == 0 {
+			counts[prevStr] += 1
+		}
+
 		val[i] = block
-
 		macroblocks[prevStr] = val
-
 		previousBlockHashes[prevStr] = block.PrevBlockHashes
-
-		counts[prevStr] += 1
 
 	}
 

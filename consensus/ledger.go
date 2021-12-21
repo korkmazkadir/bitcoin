@@ -106,27 +106,6 @@ func (l *Ledger) GetSiblings(height int) ([][]byte, [][]byte) {
 	return siblingHashes, previousBlockHashes
 }
 
-/*
-func (l *Ledger) GetMicroblock(height int, macroblockIndex int) (common.Block, bool) {
-
-	heightBlocks, ok := l.blockMap[height]
-
-	// there is no block so return false
-	if !ok {
-		return common.Block{}, false
-	}
-
-	for _, block := range heightBlocks {
-		microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
-		if microblockIndex == macroblockIndex {
-			return block, true
-		}
-	}
-
-	return common.Block{}, false
-}
-*/
-
 func (l *Ledger) append(block common.Block) bool {
 
 	previousRoundBlocks, ok := l.blockMap[block.Height-1]
