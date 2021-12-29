@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"fmt"
 	"log"
@@ -54,13 +55,13 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 	return consensus
 }
 
-func (b *Bitcoin) GetMacroBlock(round int) ([]common.Block, bool) {
+func (b *Bitcoin) GetMacroBlock(round int) ([]common.BlockMetadata, bool) {
 
 	return b.ledger.GetMacroBlock(round)
 }
 
 // MineBlock implements simulated mining
-func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
+func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 
 	// sets block issuer
 	block.Issuer = b.publickKey
@@ -98,10 +99,12 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.Block {
 				return blocks
 			}
 
-			b.updateSiblingsAndPrevBlock(&block)
-			//if b.updateSiblingsAndPrevBlock(&block) {
-			//	miningTimeChan = b.miningTime()
-			//}
+			//b.updateSiblingsAndPrevBlock(&block)
+			if blockToAppend.Height == block.Height {
+				b.updateSiblingsAndPrevBlock(&block)
+				log.Printf("Possibly Prev block hash updatated [ %x ] \n", block.PrevBlockHash)
+				//miningTimeChan = b.miningTime()
+			}
 
 		case <-miningTimeChan:
 
@@ -143,15 +146,16 @@ func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
 	siblingsUpdated := false
 	prevHashUpdated := false
 
-	siblings, previousBlockHashes := b.ledger.GetSiblings(block.Height)
+	siblings, previousBlockHash := b.ledger.GetSiblings(block.Height)
 
-	if !Equal(siblings, block.Siblings) {
+	if len(siblings) > 0 && !Equal(siblings, block.Siblings) {
 		block.Siblings = siblings
 		siblingsUpdated = true
 	}
 
-	if !Equal(previousBlockHashes, block.PrevBlockHashes) {
-		block.PrevBlockHashes = previousBlockHashes
+	if len(previousBlockHash) > 0 && !bytes.Equal(previousBlockHash, block.PrevBlockHash) {
+		log.Printf("(updateSiblingsAndPrevBlock)Prev block hash updatated [ %x ] \n", previousBlockHash)
+		block.PrevBlockHash = previousBlockHash
 		prevHashUpdated = true
 	}
 
@@ -171,18 +175,7 @@ func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
 	}
 
 	if prevHashUpdated {
-
-		var prevHashString []string
-		for _, prevHash := range previousBlockHashes {
-			if len(prevHash) > 0 {
-				prevHashString = append(prevHashString, fmt.Sprintf("[ %x ]", prevHash[:10]))
-			} else {
-				prevHashString = append(prevHashString, "[ ]")
-			}
-
-		}
-
-		log.Printf("Previous Block Hash Updated %s\n", strings.Join(prevHashString[:], "--"))
+		log.Printf("Previous Block Hash Updated %x\n", previousBlockHash)
 	}
 
 	return siblingsUpdated || prevHashUpdated

@@ -1,0 +1,16 @@
+---
+# The playbook uploads experiment artifacts to remote machines
+
+- hosts: all
+  tasks:
+  - name: grep panic from /root/rapidchain/output
+    shell: "grep -r 'panic' ./"
+    args:
+      chdir: "/root/rapidchain/output"
+    register: grep_output
+    ignore_errors: true
+
+  - debug:
+      var: grep_output.stdout_lines
+      when: grep_output.stdout != "
+      

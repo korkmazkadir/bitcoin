@@ -98,12 +98,13 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 
 		log.Printf("+++++++++ Round %d +++++++++++++++\n", currentRound)
 
-		block := createBlock(currentRound, hashMacroblock(previousBlock), blockSize, leaderCount)
+		block := createBlock(currentRound, common.MacroblockHash(previousBlock), blockSize, leaderCount)
+		log.Printf("New block created to propose. Prev block hash is  %x\n", block.PrevBlockHash)
 		minedBlock := bitcoinPP.MineBlock(block)
 
 		payloadSize := 0
 		for i := range minedBlock {
-			payloadSize += len(minedBlock[i].Payload)
+			payloadSize += minedBlock[i].PayloadSize
 		}
 
 		log.Printf("Appended payload size is %d bytes\n", payloadSize)
@@ -119,14 +120,4 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 		currentRound++
 	}
 
-}
-
-func hashMacroblock(blocks []common.Block) [][]byte {
-	var hashes [][]byte
-
-	for _, b := range blocks {
-		hashes = append(hashes, b.Hash())
-	}
-
-	return hashes
 }

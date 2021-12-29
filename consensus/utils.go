@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
+	"log"
 	"math"
 	"math/big"
 
@@ -41,35 +41,35 @@ func MicroBlockIndex(nonce int64, siblings [][]byte, concurrencyLevel int) int {
 
 }
 
-func GetFullestMacroblock(cc int, blocks []common.Block) ([]common.Block, int, [][]byte) {
+func GetFullestMacroblock(cc int, blocks []common.BlockMetadata) ([]common.BlockMetadata, int, []byte) {
 
-	macroblocks := make(map[string][]common.Block)
-	previousBlockHashes := make(map[string][][]byte)
+	macroblocks := make(map[string][]common.BlockMetadata)
+	previousBlockHashes := make(map[string][]byte)
 	counts := make(map[string]int)
 
 	for _, block := range blocks {
-		prevStr := ToString(block.PrevBlockHashes)
+		prevStr := string(block.PrevBlockHash)
 		val, ok := macroblocks[prevStr]
 		if !ok {
-			val = make([]common.Block, cc)
+			val = make([]common.BlockMetadata, cc)
 		}
 
-		i := MicroBlockIndex(block.Nonce, block.Siblings, cc)
+		//i := MicroBlockIndex(block.Nonce, block.Siblings, cc)
+		i := block.Index()
 
 		//TODO: I want to do this check val[i] == common.Block{}
-		// the compararison is added to add priority to blocks
-		if len(val[i].Payload) > 0 && bytes.Compare(val[i].Hash(), block.Hash()) > 0 {
+		if val[i].PayloadSize > 0 && bytes.Compare(val[i].Hash(), block.Hash()) > 0 {
 			continue
 		}
 
 		// we need to increase the count once
-		if len(val[i].Payload) == 0 {
+		if val[i].PayloadSize == 0 {
 			counts[prevStr] += 1
 		}
 
 		val[i] = block
 		macroblocks[prevStr] = val
-		previousBlockHashes[prevStr] = block.PrevBlockHashes
+		previousBlockHashes[prevStr] = block.PrevBlockHash
 
 	}
 
@@ -82,20 +82,9 @@ func GetFullestMacroblock(cc int, blocks []common.Block) ([]common.Block, int, [
 		}
 	}
 
+	log.Printf("(GetFullestMacroblock)Prev block hash updatated [ %x ] \n", previousBlockHashes[key])
+
 	return macroblocks[key], count, previousBlockHashes[key]
-}
-
-func ToString(data [][]byte) string {
-
-	h := sha256.New()
-	for _, d := range data {
-		_, err := h.Write(d)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return string(h.Sum(nil))
 }
 
 func Equal(a [][]byte, b [][]byte) bool {

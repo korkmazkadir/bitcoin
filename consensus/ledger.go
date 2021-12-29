@@ -11,21 +11,25 @@ import (
 type Ledger struct {
 	concurrencyLevel int
 
-	waitList           []common.Block
-	blockMap           map[int][]common.Block
-	readyToDisseminate chan common.Block
+	waitList            []common.Block
+	blockMap            map[int][]common.BlockMetadata
+	availablePrevBlocks map[string]struct{}
+	readyToDisseminate  chan common.Block
 }
 
 // NewLedger creates, and initialize a leader, returns a pointer to it
 func NewLedger(concurrencyLevel int) *Ledger {
 	ledger := &Ledger{
-		concurrencyLevel:   concurrencyLevel,
-		blockMap:           make(map[int][]common.Block),
-		readyToDisseminate: make(chan common.Block, 1024),
+		concurrencyLevel:    concurrencyLevel,
+		blockMap:            make(map[int][]common.BlockMetadata),
+		availablePrevBlocks: make(map[string]struct{}),
+		readyToDisseminate:  make(chan common.Block, 1024),
 	}
 
 	// initiates the genesis block
-	ledger.blockMap[0] = []common.Block{{Issuer: []byte("initial block"), Height: 0, Nonce: 12123423423435, Payload: []byte("hello world")}}
+	gb := common.Block{Issuer: []byte("initial block"), Height: 0, Nonce: 12123423423435, Payload: []byte("hello world")}
+	ledger.blockMap[0] = []common.BlockMetadata{common.NewBlockBlockMetadata(gb.Height, gb.Hash(), 0, nil, nil, len(gb.Payload))}
+	ledger.availablePrevBlocks[string(gb.Hash())] = struct{}{}
 
 	return ledger
 }
@@ -57,7 +61,7 @@ func (l *Ledger) AppendBlock(block common.Block) {
 }
 
 // GetMinedBlock returns true with a  list of microblocks if all the microblocks for a specific height are available otherwise returns false
-func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
+func (l *Ledger) GetMacroBlock(height int) ([]common.BlockMetadata, bool) {
 
 	heightBlocks, ok := l.blockMap[height]
 
@@ -72,7 +76,7 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 
 	// there is no block so return false
 	if !ok {
-		return []common.Block{}, false
+		return []common.BlockMetadata{}, false
 	}
 
 	blocks, count, _ := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
@@ -80,7 +84,7 @@ func (l *Ledger) GetMacroBlock(height int) ([]common.Block, bool) {
 	return blocks, count == l.concurrencyLevel
 }
 
-func (l *Ledger) GetSiblings(height int) ([][]byte, [][]byte) {
+func (l *Ledger) GetSiblings(height int) ([][]byte, []byte) {
 
 	heightBlocks := l.blockMap[height]
 
@@ -93,17 +97,18 @@ func (l *Ledger) GetSiblings(height int) ([][]byte, [][]byte) {
 		return nil, nil
 	}
 
-	blocks, _, previousBlockHashes := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
+	blocks, _, previousBlockHash := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
+	log.Printf("(GetSiblings)Prev block hash updatated [ %x ] \n", previousBlockHash)
 
 	siblingHashes := make([][]byte, l.concurrencyLevel)
 	for i := 0; i < len(blocks); i++ {
 		block := blocks[i]
-		if len(block.Payload) > 0 {
+		if block.PayloadSize > 0 {
 			siblingHashes[i] = block.Hash()
 		}
 	}
 
-	return siblingHashes, previousBlockHashes
+	return siblingHashes, previousBlockHash
 }
 
 func (l *Ledger) append(block common.Block) bool {
@@ -115,20 +120,21 @@ func (l *Ledger) append(block common.Block) bool {
 		return false
 	}
 
-	// creates an available block map
-	availableBlocks := make(map[string]struct{})
-	for _, b := range previousRoundBlocks {
-		availableBlocks[string(b.Hash())] = struct{}{}
-	}
+	//TODO: I can improve this part by constructing different searchtree for different prev blocks....
+	prevBlockStr := string(block.PrevBlockHash)
+	_, ok = l.availablePrevBlocks[prevBlockStr]
+	if !ok {
+		searchTree := common.NewSearchTree(previousRoundBlocks)
+		_, prevblockAvailable := searchTree.IsHashAvailable(previousRoundBlocks, block.PrevBlockHash)
 
-	// checks for all prev block hashes
-	for _, h := range block.PrevBlockHashes {
-		_, ok := availableBlocks[string(h)]
-		if !ok {
+		if !prevblockAvailable {
 			// returning because one of the prev blocks is missing!!!
-			log.Printf("A prev block is missing: %x\n", h[:10])
+			log.Printf("Prev block is missing: %x\n", block.PrevBlockHash[:10])
 			return false
 		}
+
+		// prevblock hash is available so put to map...
+		l.availablePrevBlocks[prevBlockStr] = struct{}{}
 	}
 
 	// apending block top the ledger
@@ -141,7 +147,9 @@ func (l *Ledger) append(block common.Block) bool {
 	// emulatest the validation cost for a block
 	l.emulateCost(len(block.Payload))
 
-	currentRoundBlocks = append(currentRoundBlocks, block)
+	microblockIndex := MicroBlockIndex(block.Nonce, block.Siblings, l.concurrencyLevel)
+	blockMetadata := common.NewBlockBlockMetadata(block.Height, block.Hash(), microblockIndex, block.Siblings, block.PrevBlockHash, len(block.Payload))
+	currentRoundBlocks = append(currentRoundBlocks, blockMetadata)
 	l.blockMap[block.Height] = currentRoundBlocks
 
 	// the block is validated, and appended to the ledger.
@@ -151,11 +159,11 @@ func (l *Ledger) append(block common.Block) bool {
 	return true
 }
 
-func areAllSiblingsAvailable(block common.Block, currentRoundBlocks []common.Block) bool {
+func areAllSiblingsAvailable(block common.Block, currentRoundBlocks []common.BlockMetadata) bool {
 
 	siblings := block.Siblings
 
-	currentRoundBlockMap := make(map[string]common.Block)
+	currentRoundBlockMap := make(map[string]common.BlockMetadata)
 	for i := 0; i < len(currentRoundBlocks); i++ {
 		currentRoundBlockMap[string(currentRoundBlocks[i].Hash())] = currentRoundBlocks[i]
 	}

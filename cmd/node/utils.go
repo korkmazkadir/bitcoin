@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -97,15 +96,15 @@ func isElectedAsLeader(nodeList []registery.NodeInfo, round int, nodeID int, lea
 	return false
 }
 
-func createBlock(round int, previousBlockHashes [][]byte, blockSize int, leaderCount int) common.Block {
+func createBlock(round int, previousBlockHash []byte, blockSize int, leaderCount int) common.Block {
 
 	//payloadSize := int(math.Ceil(float64(blockSize) / float64(leaderCount)))
 
 	block := common.Block{
-		Height:          round,
-		Payload:         getRandomByteSlice(blockSize),
-		PrevBlockHashes: previousBlockHashes,
-		Siblings:        make([][]byte, leaderCount),
+		Height:        round,
+		Payload:       getRandomByteSlice(blockSize),
+		PrevBlockHash: previousBlockHash,
+		Siblings:      make([][]byte, leaderCount),
 	}
 
 	return block
@@ -120,7 +119,7 @@ func getRandomByteSlice(size int) []byte {
 	return data
 }
 
-func sanityCheck(cc int, currentRound int, blocks []common.Block) (round int, macroBlockHash []byte) {
+func sanityCheck(cc int, currentRound int, blocks []common.BlockMetadata) (round int, macroBlockHash []byte) {
 
 	if len(blocks) != cc {
 		panic(fmt.Errorf("microblock count(%d) is not equal to cc(%d) value", len(blocks), cc))
@@ -137,7 +136,7 @@ func sanityCheck(cc int, currentRound int, blocks []common.Block) (round int, ma
 		microblockBlockHashes[key] = struct{}{}
 	}
 
-	previousBlockHash := Hash(blocks[0].PrevBlockHashes)
+	previousBlockHash := blocks[0].PrevBlockHash
 	for i := 0; i < len(blocks); i++ {
 		microBlock := blocks[i]
 
@@ -145,8 +144,8 @@ func sanityCheck(cc int, currentRound int, blocks []common.Block) (round int, ma
 			panic(fmt.Errorf("microblock height(%d) is not equal to current round number(%d)", microBlock.Height, currentRound))
 		}
 
-		if !bytes.Equal(previousBlockHash, Hash(microBlock.PrevBlockHashes)) {
-			panic(fmt.Errorf("previous block hashes are different [%d] != [%d]", previousBlockHash, Hash(microBlock.PrevBlockHashes)))
+		if !bytes.Equal(previousBlockHash, microBlock.PrevBlockHash) {
+			panic(fmt.Errorf("previous block hashes are different [%d] != [%d]", previousBlockHash, microBlock.PrevBlockHash))
 		}
 
 		for _, siblingHash := range microBlock.Siblings {
@@ -163,18 +162,4 @@ func sanityCheck(cc int, currentRound int, blocks []common.Block) (round int, ma
 	round = currentRound
 	macroBlockHash = common.MacroblockHash(blocks)
 	return
-}
-
-func Hash(data [][]byte) []byte {
-
-	h := sha256.New()
-
-	for _, d := range data {
-		_, err := h.Write(d)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return h.Sum(nil)
 }

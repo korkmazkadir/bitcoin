@@ -23,4 +23,4 @@
         cmd: pkill node || /bin/true
 
     - name: deploying nodes
-      shell: cd ~/rapidchain; ./deploy-nodes.sh 67 "{{ groups['registry'][0] }}:1234" eno1
+      shell: cd ~/rapidchain; ./deploy-nodes.sh 100 "{{ groups['registry'][0] }}:1234" eno1

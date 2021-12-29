@@ -10,7 +10,7 @@ import (
 type Block struct {
 	Issuer []byte
 
-	PrevBlockHashes [][]byte
+	PrevBlockHash []byte
 
 	Height int
 
@@ -44,7 +44,7 @@ func (b Block) GetEnqueueElapsedTime() int {
 // It considers all fields of a Block.
 func (b Block) Hash() []byte {
 
-	str := fmt.Sprintf("%x,%x,%d,%d,%x", b.Issuer, b.PrevBlockHashes, b.Height, b.Nonce, b.Payload)
+	str := fmt.Sprintf("%x,%x,%d,%d,%x", b.Issuer, b.PrevBlockHash, b.Height, b.Nonce, b.Payload)
 	h := sha256.New()
 	_, err := h.Write([]byte(str))
 	if err != nil {
