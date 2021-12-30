@@ -81,12 +81,14 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 
 			disseminationTime := int(time.Now().UnixMilli() - blockToAppend.Timestamp)
 			b.statLogger.LogBlockReceived(blockToAppend.Height, disseminationTime, blockToAppend.HopCount)
-			log.Printf("[%d] Received:\t%x\tHeight: %d \tDissTime: %d ms.\tHopCount: %d\n",
+			log.Printf("[%d] Received:\t%x\tHeight: %d \tDissTime: %d ms.\tHopCount: %d\tPrev: %x\n",
 				microBlockIndex,
 				blockToAppend.Hash()[:15],
 				blockToAppend.Height,
 				disseminationTime,
-				blockToAppend.HopCount)
+				blockToAppend.HopCount,
+				blockToAppend.PrevBlockHash[:15],
+			)
 
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)

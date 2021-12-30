@@ -99,7 +99,7 @@ func runConsensus(bitcoinPP *consensus.Bitcoin, numberOfRounds int, nodeCount in
 		log.Printf("+++++++++ Round %d +++++++++++++++\n", currentRound)
 
 		block := createBlock(currentRound, common.MacroblockHash(previousBlock), blockSize, leaderCount)
-		log.Printf("New block created to propose. Prev block hash is  %x\n", block.PrevBlockHash)
+		log.Printf("Local block created to propose. PrevHash: %x\t Round: %d \n", block.PrevBlockHash[0:15], block.Height)
 		minedBlock := bitcoinPP.MineBlock(block)
 
 		payloadSize := 0

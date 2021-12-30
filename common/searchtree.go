@@ -80,8 +80,14 @@ func depthFirstSearchHash(root *SearchTree, roundBlocks []BlockMetadata, hashToS
 
 func constructSingleHashSelective(blocks []BlockMetadata, blockIndexes []int) []byte {
 
-	if len(blocks) == 1 {
-		return blocks[0].Hash()
+	// if len(blocks) == 1 {
+	// 	return blocks[0].Hash()
+	// }
+
+	// if there is only single index it must be 0
+	// otherwise it is an error, and it should panic; therefore I used a hardcoded index 0 to get a panic
+	if len(blockIndexes) == 1 {
+		return blocks[blockIndexes[0]].Hash()
 	}
 
 	h := sha256.New()

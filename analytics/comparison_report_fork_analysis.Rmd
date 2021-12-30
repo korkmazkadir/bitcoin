@@ -4,11 +4,11 @@ author: "Kadir Korkmaz"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/BitcoinStats';
+      workingDir <- '/home/kadir/Desktop/40_rounds_bitcoin++';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
-                        output_file=file.path(workingDir, 'experiment-report.pdf')) })
+                        output_file=file.path(workingDir, 'experiment-report-fork.pdf')) })
 ---
 
 ```{r setup, include=FALSE}
@@ -108,7 +108,7 @@ experimentDF <-  experimentDF %>% add_column( ExpType=if_else(experimentDF$Diffi
 experimentDF <- experimentDF %>% mutate(CC=if_else(experimentDF$Difficulty == 600, experimentDF$CC, as.integer( 600 / experimentDF$Difficulty) ))
 
 ########################################################
- experimentDF <- experimentDF %>% filter(Round <= 30)
+#experimentDF <- experimentDF %>% filter(Round <= 30)
 
 
 blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
