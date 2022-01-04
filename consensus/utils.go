@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"log"
 	"math"
 	"math/big"
 
@@ -82,7 +81,7 @@ func GetFullestMacroblock(cc int, blocks []common.BlockMetadata) ([]common.Block
 		}
 	}
 
-	log.Printf("(GetFullestMacroblock)Prev block hash updatated [ %x ] \n", previousBlockHashes[key])
+	//log.Printf("(GetFullestMacroblock)Prev block hash updatated [ %x ] \n", previousBlockHashes[key])
 
 	return macroblocks[key], count, previousBlockHashes[key]
 }

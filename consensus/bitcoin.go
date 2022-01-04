@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/korkmazkadir/bitcoin/common"
@@ -102,11 +101,10 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 			}
 
 			//b.updateSiblingsAndPrevBlock(&block)
-			if blockToAppend.Height == block.Height {
-				b.updateSiblingsAndPrevBlock(&block)
-				log.Printf("Possibly Prev block hash updatated [ %x ] \n", block.PrevBlockHash)
-				//miningTimeChan = b.miningTime()
-			}
+			//TODO: this if statement could be the bug that increases the latency of the protocol!!!
+			//if blockToAppend.Height == block.Height {
+			b.updateSiblingsAndPrevBlock(&block)
+			//}
 
 		case <-miningTimeChan:
 
@@ -161,24 +159,35 @@ func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
 		prevHashUpdated = true
 	}
 
-	if siblingsUpdated {
+	//TODO: enable sibling logging later...
+	// if siblingsUpdated {
 
-		var siblingStrings []string
+	// 	var siblingStrings []string
+	// 	for _, sibling := range siblings {
+	// 		if len(sibling) > 0 {
+	// 			siblingStrings = append(siblingStrings, fmt.Sprintf("[ %x ]", sibling[:10]))
+	// 		} else {
+	// 			siblingStrings = append(siblingStrings, "[ ]")
+	// 		}
+
+	// 	}
+
+	// 	log.Printf("Siblings Updated %s\n", strings.Join(siblingStrings[:], "--"))
+	// }
+
+	if siblingsUpdated {
+		siblingCount := 0
 		for _, sibling := range siblings {
 			if len(sibling) > 0 {
-				siblingStrings = append(siblingStrings, fmt.Sprintf("[ %x ]", sibling[:10]))
-			} else {
-				siblingStrings = append(siblingStrings, "[ ]")
+				siblingCount++
 			}
-
 		}
-
-		log.Printf("Siblings Updated %s\n", strings.Join(siblingStrings[:], "--"))
+		log.Printf("[Sibling Count Updated] %d/%d\n", siblingCount, b.config.LeaderCount)
 	}
 
-	if prevHashUpdated {
-		log.Printf("Previous Block Hash Updated %x\n", previousBlockHash)
-	}
+	//if prevHashUpdated {
+	//	log.Printf("Previous Block Hash Updated %x\n", previousBlockHash)
+	//}
 
 	return siblingsUpdated || prevHashUpdated
 }

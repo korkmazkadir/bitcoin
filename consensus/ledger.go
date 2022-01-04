@@ -98,7 +98,7 @@ func (l *Ledger) GetSiblings(height int) ([][]byte, []byte) {
 	}
 
 	blocks, _, previousBlockHash := GetFullestMacroblock(l.concurrencyLevel, heightBlocks)
-	log.Printf("(GetSiblings)Prev block hash updatated [ %x ] \n", previousBlockHash)
+	//log.Printf("(GetSiblings)Prev block hash updatated [ %x ] \n", previousBlockHash)
 
 	siblingHashes := make([][]byte, l.concurrencyLevel)
 	for i := 0; i < len(blocks); i++ {
@@ -124,12 +124,20 @@ func (l *Ledger) append(block common.Block) bool {
 	prevBlockStr := string(block.PrevBlockHash)
 	_, ok = l.availablePrevBlocks[prevBlockStr]
 	if !ok {
+
+		start := time.Now()
 		searchTree := common.NewSearchTree(previousRoundBlocks)
+		eSearchTreeCreation := time.Since(start)
+
 		_, prevblockAvailable := searchTree.IsHashAvailable(previousRoundBlocks, block.PrevBlockHash)
+		eFindingPreviousHash := time.Since(start)
+
+		log.Printf("Search Tree created	:	%s\n", eSearchTreeCreation)
+		log.Printf("Prev Hash Calculated:	%s\n", eFindingPreviousHash)
 
 		if !prevblockAvailable {
 			// returning because one of the prev blocks is missing!!!
-			log.Printf("Prev block is missing: %x\n", block.PrevBlockHash[:10])
+			log.Printf("-----> Prev block is missing: %x\n", block.PrevBlockHash[:10])
 			return false
 		}
 
@@ -140,7 +148,7 @@ func (l *Ledger) append(block common.Block) bool {
 	// apending block top the ledger
 	currentRoundBlocks := l.blockMap[block.Height]
 	if !areAllSiblingsAvailable(block, currentRoundBlocks) {
-		log.Println("A sibling is missing")
+		log.Println("-----> A sibling is missing")
 		return false
 	}
 
