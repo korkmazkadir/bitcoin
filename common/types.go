@@ -8,7 +8,9 @@ import (
 
 // Block defines blockchain block structure
 type Block struct {
-	Issuer []byte
+
+	// contains the node id
+	Issuer int
 
 	PrevBlockHash []byte
 
@@ -18,8 +20,6 @@ type Block struct {
 
 	// contains the hashes of sibling blocks
 	Siblings [][]byte
-
-	Signature []byte
 
 	Payload []byte
 

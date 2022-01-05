@@ -21,6 +21,7 @@ type Bitcoin struct {
 	publickKey []byte
 	privateKey []byte
 	nbinom     *NBinom
+	nodeID     int
 }
 
 func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet network.PeerSet, statLogger *common.StatLogger, nodeID int) *Bitcoin {
@@ -38,6 +39,7 @@ func NewBitcoin(demux *common.Demux, nodeConfig registery.NodeConfig, peerSet ne
 		//nbinom:     NewNBinom(fmt.Sprintf("%d", nodeID), 1, prob),
 		//TODO: revert this back
 		nbinom: NewNBinom(fmt.Sprintf("%d", time.Now().UnixMilli()), 1, prob),
+		nodeID: nodeID,
 	}
 
 	pubKey, privKey, err := ed25519.GenerateKey(nil)
@@ -63,7 +65,7 @@ func (b *Bitcoin) GetMacroBlock(round int) ([]common.BlockMetadata, bool) {
 func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 
 	// sets block issuer
-	block.Issuer = b.publickKey
+	block.Issuer = b.nodeID
 
 	b.statLogger.NewRound(block.Height)
 
@@ -76,35 +78,30 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 
 		case blockToAppend := <-blockChan:
 
+			if blockToAppend.Issuer == b.nodeID {
+				log.Printf("Received its own block and ignored. Height: %d Hash: %x PrevHash %x\n", blockToAppend.Height, blockToAppend.Hash()[:15], blockToAppend.PrevBlockHash[:15])
+				continue
+			}
+
 			microBlockIndex := MicroBlockIndex(blockToAppend.Nonce, blockToAppend.Siblings, b.ledger.concurrencyLevel)
 
 			disseminationTime := int(time.Now().UnixMilli() - blockToAppend.Timestamp)
 			b.statLogger.LogBlockReceived(blockToAppend.Height, disseminationTime, blockToAppend.HopCount)
-			log.Printf("[%d] Received:\t%x\tHeight: %d \tDissTime: %d ms.\tHopCount: %d\tPrev: %x\n",
-				microBlockIndex,
-				blockToAppend.Hash()[:15],
-				blockToAppend.Height,
-				disseminationTime,
-				blockToAppend.HopCount,
-				blockToAppend.PrevBlockHash[:15],
-			)
+
+			/*
+				log.Printf("[%d] Received:\t%x\tHeight: %d \tDissTime: %d ms.\tHopCount: %d\tPrev: %x\n",
+					microBlockIndex,
+					blockToAppend.Hash()[:15],
+					blockToAppend.Height,
+					disseminationTime,
+					blockToAppend.HopCount,
+					blockToAppend.PrevBlockHash[:15],
+				)*/
+
+			LogReceivedBlock(blockToAppend.Issuer, blockToAppend.Height, blockToAppend.Timestamp, microBlockIndex, blockToAppend.Hash(), blockToAppend.PrevBlockHash)
 
 			// appends the received block to the ledger
 			b.ledger.AppendBlock(blockToAppend)
-
-			// gets the macroblock
-			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
-			if roundFinished {
-				macroblockHash := common.MacroblockHash(blocks)
-				b.statLogger.LogEndOfRound(macroblockHash)
-				return blocks
-			}
-
-			//b.updateSiblingsAndPrevBlock(&block)
-			//TODO: this if statement could be the bug that increases the latency of the protocol!!!
-			//if blockToAppend.Height == block.Height {
-			b.updateSiblingsAndPrevBlock(&block)
-			//}
 
 		case <-miningTimeChan:
 
@@ -115,33 +112,33 @@ func (b *Bitcoin) MineBlock(block common.Block) []common.BlockMetadata {
 			blockPointer := &block
 			blockPointer.SetEnqueueTime()
 
-			// I have removed the microblock index check
-			// I think it was impossible to have full microbloc index
-			// because of siblings mechanism
-
-			block.Signature = Sign(block.Hash(), b.privateKey)
 			block.Timestamp = time.Now().UnixMilli()
 			b.ledger.AppendBlock(block)
 
-			log.Printf("[%d] Mined:\t\t%x\tHeight: %d\n", microBlockIndex, block.Hash()[:15], block.Height)
-
-			// gets the macroblock
-			blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
-			if roundFinished {
-				macroblockHash := common.MacroblockHash(blocks)
-				b.statLogger.LogEndOfRound(macroblockHash)
-				return blocks
-			}
+			log.Printf("[%d] [Mined] Hash:\t%x PrevHash:\t%x \tHeight: %d\n", microBlockIndex, block.Hash()[:15], block.PrevBlockHash[:15], block.Height)
 
 			miningTimeChan = b.miningTime()
 
 		}
+
+		// gets the macroblock
+		blocks, roundFinished := b.ledger.GetMacroBlock(block.Height)
+		if roundFinished {
+			macroblockHash := common.MacroblockHash(blocks)
+			b.statLogger.LogEndOfRound(macroblockHash)
+			return blocks
+		}
+
+		b.updateSiblingsAndPrevBlock(&block)
 
 	}
 
 }
 
 func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
+
+	previousHash_ := block.Hash()
+	previousPrevHash_ := block.PrevBlockHash
 
 	siblingsUpdated := false
 	prevHashUpdated := false
@@ -185,9 +182,15 @@ func (b *Bitcoin) updateSiblingsAndPrevBlock(block *common.Block) bool {
 		log.Printf("[Sibling Count Updated] %d/%d\n", siblingCount, b.config.LeaderCount)
 	}
 
-	//if prevHashUpdated {
-	//	log.Printf("Previous Block Hash Updated %x\n", previousBlockHash)
-	//}
+	if prevHashUpdated {
+		log.Println("-----------------------------------------------")
+		log.Printf("---------PreviousHash Updated---------\n")
+		log.Printf("OldHash: %x\n", previousHash_)
+		log.Printf("OldPrevHash: %x\n", previousPrevHash_)
+		log.Printf("NewHash: %x\n", block.Hash())
+		log.Printf("NewPrevHash: %x\n", block.PrevBlockHash)
+		log.Println("-----------------------------------------------")
+	}
 
 	return siblingsUpdated || prevHashUpdated
 }
@@ -201,6 +204,11 @@ func (b *Bitcoin) disseminate() {
 		// increments the hope count
 		blockToDisseminate.HopCount++
 		log.Printf("Forwarding:\t\t%x\n", blockToDisseminate.Hash()[:15])
+
+		if blockToDisseminate.Issuer == b.nodeID {
+			log.Printf("---->Forwarding its own block Hash: %x, PrevHash: %x \n", blockToDisseminate.Hash()[:15], blockToDisseminate.PrevBlockHash[:15])
+		}
+
 		b.peerSet.DissaminateBlock(blockToDisseminate)
 	}
 }

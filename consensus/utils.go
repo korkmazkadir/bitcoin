@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
+	"fmt"
+	"log"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/korkmazkadir/bitcoin/common"
 )
@@ -81,7 +85,7 @@ func GetFullestMacroblock(cc int, blocks []common.BlockMetadata) ([]common.Block
 		}
 	}
 
-	//log.Printf("(GetFullestMacroblock)Prev block hash updatated [ %x ] \n", previousBlockHashes[key])
+	log.Printf("(GetFullestMacroblock)Prev block hash Calculated [ %x ] \n", previousBlockHashes[key])
 
 	return macroblocks[key], count, previousBlockHashes[key]
 }
@@ -99,4 +103,27 @@ func Equal(a [][]byte, b [][]byte) bool {
 	}
 
 	return true
+}
+
+type ReceivedBlock struct {
+	Issuer          int
+	Height          int
+	TimeString      string
+	MicroblockIndex int
+	Hash            string
+	PrevHash        string
+}
+
+const (
+	TimeFormat = "Jan _2 15:04:05.000"
+)
+
+func LogReceivedBlock(issuer int, height int, timestamp int64, microblocIndex int, hash []byte, prevHash []byte) {
+	tstring := time.UnixMilli(timestamp).Format(TimeFormat)
+	rb := ReceivedBlock{Issuer: issuer, Height: height, Hash: fmt.Sprintf("%x", hash[:15]), PrevHash: fmt.Sprintf("%x", prevHash[:15]), TimeString: tstring, MicroblockIndex: microblocIndex}
+	messageBytes, err := json.Marshal(rb)
+	if err != nil {
+		panic(err)
+	}
+	log.Printf("[RECEIVED]\t%s\n", string(messageBytes))
 }

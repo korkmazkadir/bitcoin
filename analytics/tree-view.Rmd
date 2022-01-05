@@ -1,0 +1,101 @@
+---
+title: "Tree View"
+author: "Kadir Korkmaz"
+date: "January 4, 2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+filePath <- "/home/kadir/Desktop/44.log"
+file <-  file(filePath,open="r")
+lines <- readLines(file)
+
+  
+
+```
+
+
+## R Markdown
+```{r, echo=FALSE}
+library(jsonlite)
+
+# filter lines with received tag
+lines <- lines[grep(pattern = "RECEIVED", x = lines)]
+
+# splits from tab
+lines <-strsplit(lines,'\t')
+
+jsonStringVector <- c()
+for (i in 1:length(lines)) {
+  # keeps only the json part of each log line
+  jsonStringVector[i] = lines[[i]][2]
+}
+
+# constructs data frame from json strings
+block_df <- fromJSON(jsonStringVector[1])
+for (i in 2:length(jsonStringVector)) {
+  # keeps only the json part of each log line
+  block_df <- rbind( block_df,  fromJSON(jsonStringVector[i]) )
+}
+
+#typeof(block_df)
+
+
+```
+
+
+## Blockchain
+```{r}
+library(data.tree)
+library(hash)
+library(R.utils)
+
+head(block_df, n=10)
+
+BlockMap <- hash()
+Ledger <- Node$new("Ledger")
+
+prev_blocks <- c()
+
+for (i in 1:nrow(block_df)) {
+  # keeps only the json part of each log line
+
+  height <- block_df[i,"Height"][[1]]
+  microblockIndex <- block_df[i,"MicroblockIndex"][[1]]
+  timestring <- block_df[i,"TimeString"][[1]]
+  #hash <- block_df[i,"Hash"][[1]]
+  hash <-  substr(block_df[i,"Hash"][[1]],0,15)
+  prevhash <- block_df[i,"PrevHash"][[1]]
+
+  
+  #print(height)
+
+  # ensures that the child exists
+  
+  prevBlockName <- sprintf("%d -- %s", height-1, prevhash)
+  if ( all( has.key( prevBlockName, BlockMap  ))  == FALSE  ){
+      BlockMap[[prevBlockName]] <- Ledger$AddChild(prevBlockName)
+      BlockMap[[prevBlockName]]$MicroblockCount <- 0
+  }
+  
+  microblock <- paste( microblockIndex, hash, timestring, sep=" -- ")
+  prevBlock <- BlockMap[[prevBlockName]]
+  m <- prevBlock$AddChild(microblock)
+  m$Mindex <- microblockIndex
+  #increments microblock count
+  prevBlock$MicroblockCount <- prevBlock$MicroblockCount + 1
+
+  prev_blocks <- append( prev_blocks, prevBlockName )
+
+}
+
+Sort(Ledger, "Mindex")
+
+SetFormat(Ledger, "MicroblockCount", formatFun = function(x) if(is.na(x)){ return("") }else{ return(x)  })
+print(Ledger,'MicroblockCount', limit=1000)
+
+
+```
+

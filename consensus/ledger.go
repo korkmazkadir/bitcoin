@@ -27,7 +27,7 @@ func NewLedger(concurrencyLevel int) *Ledger {
 	}
 
 	// initiates the genesis block
-	gb := common.Block{Issuer: []byte("initial block"), Height: 0, Nonce: 12123423423435, Payload: []byte("hello world")}
+	gb := common.Block{Issuer: -12345, Height: 0, Nonce: 12123423423435, Payload: []byte("hello world")}
 	ledger.blockMap[0] = []common.BlockMetadata{common.NewBlockBlockMetadata(gb.Height, gb.Hash(), 0, nil, nil, len(gb.Payload))}
 	ledger.availablePrevBlocks[string(gb.Hash())] = struct{}{}
 
