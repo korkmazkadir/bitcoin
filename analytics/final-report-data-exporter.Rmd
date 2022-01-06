@@ -1,0 +1,120 @@
+---
+title: "Final Report Data exporter"
+author: "Kadir Korkmaz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/home/kadir/Desktop/Bitcoin_1MB_Experiments';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'remove.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+library(tibble)
+library(readr)
+
+
+experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
+colnames(experimentDF) <- c( "BlockSize", "CC", "Difficulty",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+#TODO: add explanation
+BitcoinPP <- "Bitcoin++"
+BitcoinReducedDiff <- "BitcoinReducedDiff"
+experimentDF <-  experimentDF %>% add_column( ExpType=if_else(experimentDF$Difficulty == 600, BitcoinPP, BitcoinReducedDiff))
+#TODO: add explanation
+experimentDF <- experimentDF %>% mutate(CC=if_else(experimentDF$Difficulty == 600, experimentDF$CC, as.integer( 600 / experimentDF$Difficulty) ))
+
+blockReceivedDF <- experimentDF %>% filter(Type == "BLOCK_RECEIVED")
+hopCountDF <- experimentDF %>% filter(Type == "HOP_COUNT")
+processingTimeDF <- experimentDF %>% filter(Type == "PROCESSING_TIME")
+endOfRound <-experimentDF %>% filter(Type == "END_OF_ROUND")
+# This is to calculate the second version of throughput
+endOfRound2 <-data.frame(endOfRound)
+
+
+throughputDF <- experimentDF %>% filter(Type == "END_OF_ROUND")
+throughputDF$ElapsedTime <- throughputDF$ElapsedTime / 1000 # elapsed time in seconds
+throughputDF$BlockSize <- throughputDF$BlockSize / 1000 # block size in KB
+
+#Calculates throughput
+throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficulty == 600, throughputDF$BlockSize * throughputDF$CC / throughputDF$ElapsedTime, throughputDF$BlockSize / throughputDF$ElapsedTime ))
+
+```
+
+
+
+\newpage
+## Throughput
+
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+
+throughputDF <- endOfRound2 %>% group_by( ExpType, Difficulty, BlockSize, CC, NodeID )%>%
+                summarise(
+                  RoundCount=n(),
+                  TotalTime=sum(ElapsedTime)
+                )
+
+throughputDF$TotalTime <- throughputDF$TotalTime  / 1000
+throughputDF$BlockSize <- throughputDF$BlockSize  / 1000
+
+
+throughputDF <- throughputDF %>% mutate(
+  Throughput=if_else(Difficulty == 600, 
+                     BlockSize * CC * RoundCount / TotalTime, 
+                     BlockSize * RoundCount / TotalTime )
+  )
+
+
+grouped_throughputDF <- throughputDF %>% 
+                group_by( ExpType, BlockSize, CC ) %>%
+                summarise(
+                  Min = min(Throughput),
+                  Q1 = quantile(Throughput, 0.25),
+                  Median = median(Throughput),
+                  Mean = mean(Throughput),
+                  Q3 = quantile(Throughput, 0.75),
+                  Max = max(Throughput)
+                )
+
+
+write.csv(grouped_throughputDF,"throughput_df.csv", row.names = TRUE)
+
+kable(grouped_throughputDF, n=100)
+
+```
+
+
+\newpage
+## Average number of Delivered Blocks per Round (Fork statistics)
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+
+block_count_df <- blockReceivedDF %>% 
+                    count(ExpType,BlockSize, CC, Round, NodeID) %>% 
+                          group_by( BlockSize, CC, ExpType  ) %>%
+                            summarise(
+                              MeanBlockCount = mean(n)
+                            )
+
+
+block_count_df <- block_count_df %>% mutate(ExtraCostPercent=if_else(ExpType == BitcoinPP, (MeanBlockCount - CC)*100/CC, (MeanBlockCount - 1)*100 ))
+
+write.csv(block_count_df,"fork_df.csv", row.names = TRUE)
+
+kable(block_count_df)
+
+```

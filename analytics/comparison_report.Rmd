@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/home/kadir/Desktop/bitcoin_40r_cc32';
+      workingDir <- '/home/kadir/Desktop/Bitcoin_1MB_Experiments';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -20,10 +20,10 @@ library(dplyr)
 library(ggplot2)
 library(knitr)
 library(tibble)
+library(readr)
 
 
 experimentDF <- read.table('experiment.stats', sep = '\t',header = FALSE)
-
 
 
 colnames(experimentDF) <- c( "BlockSize", "CC", "Difficulty",  "NodeID","Round","Type","ElapsedTime", "BlockHash")
@@ -131,23 +131,16 @@ throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficul
 
 \newpage
 
-### Background
-In this report we have compared Bitcoin++ with Bitcoin Reduced Difficulty.
-
 ### Configuration
-We have deployed 1005 nodes per each experiments.
-We deployed the nodes on 15 machines from G5K. We cap the bandwidth of each process (20Mbps), and we have added latency to communication links (50ms).
+```{r, echo=FALSE, comment=''}
+#https://stackoverflow.com/questions/29257985/r-markdown-how-do-i-show-file-contents
 
-For Bitcon++ experiments we have collected 30 rounds of data.
-For Bitcoin experiments we collected 380, 240, and 120 rounds of data to match the number of disseminated block with corresponding Bitcoin++ experiment.
-
-### Latency and Throughput measurements
-
-Each node locally measures the round duration, and we have collected these measurements to create the latency plot presented here.
-For the throughput, at the end of the experiment, each node calculates the throughput by dividing the size of appended data with total elapsed time.
-
-### Forks
-We have measured the average number of disseminated blocks per round for each experiment.
+# Reads configuration file to print
+if (file.exists("Configuration.txt")){
+  experimentConfiguration <- read_file('Configuration.txt')  
+}
+cat(experimentConfiguration)
+```
 
 
 
@@ -302,6 +295,32 @@ kable(block_count_df)
 # kable(cdf)
 
 
+```
+
+\newpage
+## Number of rounds a single block decided
+
+```{r, echo=FALSE}
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(ExpType,BlockSize, CC, Round ) %>%
+                summarise(
+                  DecidedBlockCount = n_distinct(BlockHash)
+                ) %>% group_by(ExpType,BlockSize, CC ) %>%
+                summarise(
+                  SingleBlockDecidedRoundCount=sum(DecidedBlockCount==1)
+                )
+
+max_rounds  <-  endOfRound %>% 
+                group_by(ExpType,BlockSize, CC ) %>%
+                summarise(
+                  MaxRound = max(Round)
+                )
+
+
+kable(max_rounds, n=100)
+
+kable(grouped_endOfRound, n=100)
 ```
 
 \newpage

@@ -1,5 +1,5 @@
 ---
-title: "Tree View"
+title: "Blockchain Tree View"
 author: "Kadir Korkmaz"
 date: "January 4, 2022"
 output: pdf_document
@@ -8,7 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-filePath <- "/home/kadir/Desktop/44.log"
+filePath <- "/home/kadir/Desktop/2_bitcoinRedDiff_cc32.log"
 file <-  file(filePath,open="r")
 lines <- readLines(file)
 
@@ -16,6 +16,7 @@ lines <- readLines(file)
 
 ```
 
+\newpage
 
 ## R Markdown
 ```{r, echo=FALSE}
@@ -47,12 +48,13 @@ for (i in 2:length(jsonStringVector)) {
 
 
 ## Blockchain
-```{r}
+```{r, echo=FALSE}
 library(data.tree)
 library(hash)
-library(R.utils)
+#https://stackoverflow.com/questions/39137110/what-does-the-following-object-is-masked-from-packagexxx-mean
+library(conflicted)
 
-head(block_df, n=10)
+#head(block_df, n=10)
 
 BlockMap <- hash()
 Ledger <- Node$new("Ledger")
@@ -94,7 +96,7 @@ for (i in 1:nrow(block_df)) {
 Sort(Ledger, "Mindex")
 
 SetFormat(Ledger, "MicroblockCount", formatFun = function(x) if(is.na(x)){ return("") }else{ return(x)  })
-print(Ledger,'MicroblockCount', limit=1000)
+print(Ledger,'MicroblockCount', limit=1000000)
 
 
 ```
