@@ -136,6 +136,7 @@ throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficul
 #https://stackoverflow.com/questions/29257985/r-markdown-how-do-i-show-file-contents
 
 # Reads configuration file to print
+experimentConfiguration<-""
 if (file.exists("Configuration.txt")){
   experimentConfiguration <- read_file('Configuration.txt')  
 }
