@@ -1,0 +1,74 @@
+---
+title: "Plots for The Article"
+author: "Kadir Korkmaz"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+knit: (function(inputFile, encoding) { 
+      workingDir <- '/Users/kadir/Desktop/report-dataset';
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        knit_root_dir = workingDir,
+                        output_file=file.path(workingDir, 'remove.pdf')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(ggplot2)
+library(knitr)
+
+
+
+throughput_df <- read.csv("throughput_df.csv", header = TRUE)
+orphanblock_df <- read.csv("fork_df.csv", header = TRUE)
+
+```
+
+
+\newpage
+## Throughput Plot
+\
+\
+\
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+throughput_df$Shape <-paste(throughput_df$ExpType, ifelse(throughput_df$BlockSize == 1000, "1MB", "500KB" ), sep=" ")
+
+ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=ExpType)) +
+  geom_line(aes(linetype=ExpType), lwd=0.3)+
+  geom_point(aes(shape=Shape)) +
+  scale_shape_manual(values=c(0, 4, 3, 1))+
+  guides(linetype = FALSE) + 
+  theme_bw() +
+  theme(legend.position="top") + 
+  labs(shape="", x="Cl", y="Median Throughput (KB/Second)")
+  
+#kable(throughput_df, n=100)
+
+```
+
+
+\newpage
+## Orphan Block Plot
+\
+\
+\
+```{r, echo=FALSE, fig.height=4, warning=FALSE}
+
+
+orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
+
+ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=ExpType)) +
+  geom_line(aes(linetype=ExpType), lwd=0.3)+
+  geom_point(aes(shape=Shape)) +
+  scale_shape_manual(values=c(0, 4, 3, 1))+
+  guides(linetype = FALSE) + 
+  theme_bw() +
+  theme(legend.position="top") + 
+  labs(shape="", x="Cl", y="Orphan Block Percent Per Round")
+
+#kable(orphanblock_df)
+
+```
