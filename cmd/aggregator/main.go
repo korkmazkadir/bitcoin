@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/korkmazkadir/bitcoin/registery"
 )
@@ -16,6 +18,7 @@ const statFile = "stats.log"
 
 func main() {
 
+	var wg sync.WaitGroup
 	globalStatFile := getGlobalStatFile()
 
 	err := filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
@@ -39,10 +42,16 @@ func main() {
 			return nil
 		}
 
-		appendToLogs(config, statFile, globalStatFile)
+		wg.Add(1)
+		go func() {
+			appendToLogs(config, statFile, globalStatFile)
+			wg.Done()
+		}()
 
 		return nil
 	})
+
+	wg.Wait()
 
 	if err != nil {
 		panic(err)
@@ -55,6 +64,8 @@ func main() {
 }
 
 func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *os.File) {
+
+	log.Printf("Processing BlockSize: %d, LeaderCount: %d, MiningTime: %f\n", config.BlockSize, config.LeaderCount, config.MiningTime)
 
 	scanner := bufio.NewScanner(stats)
 	prefix := fmt.Sprintf("%d\t%d\t%f\t", config.BlockSize, config.LeaderCount, config.MiningTime)
@@ -72,7 +83,7 @@ func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *o
 
 func getGlobalStatFile() *os.File {
 
-	file, err := os.OpenFile("experiment.stats", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	file, err := os.OpenFile("experiment.stats", os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0755)
 	if err != nil {
 		panic(err)
 	}
