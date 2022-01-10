@@ -4,7 +4,7 @@ author: "Kadir Korkmaz"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 knit: (function(inputFile, encoding) { 
-      workingDir <- '/Users/kadir/Desktop/report-dataset';
+      workingDir <- '/home/kadir/Desktop/Bitcoin_1MB_Experiments';
       rmarkdown::render(inputFile,
                         encoding=encoding,
                         knit_root_dir = workingDir,
@@ -32,15 +32,15 @@ orphanblock_df <- read.csv("fork_df.csv", header = TRUE)
 \
 \
 \
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
+```{r throughput, echo=FALSE, fig.height=4, warning=FALSE}
 
 throughput_df$Shape <-paste(throughput_df$ExpType, ifelse(throughput_df$BlockSize == 1000, "1MB", "500KB" ), sep=" ")
 
-ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=ExpType)) +
-  geom_line(aes(linetype=ExpType), lwd=0.3)+
+ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
+  geom_line(aes(linetype=Shape,  color=Shape), lwd=0.3)+
   geom_point(aes(shape=Shape)) +
-  scale_shape_manual(values=c(0, 4, 3, 1))+
-  guides(linetype = FALSE) + 
+  scale_shape_manual(values=c(0, 1, 3, 4))+
+  guides(linetype = FALSE, color=FALSE) + 
   theme_bw() +
   theme(legend.position="top") + 
   labs(shape="", x="Cl", y="Median Throughput (KB/Second)")
@@ -55,16 +55,16 @@ ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=ExpType)) +
 \
 \
 \
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
+```{r  orphanblocks, echo=FALSE, fig.height=4, warning=FALSE}
 
 
 orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
-ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=ExpType)) +
-  geom_line(aes(linetype=ExpType), lwd=0.3)+
+ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=Shape)) +
+  geom_line(aes(linetype=Shape, color=Shape), lwd=0.3)+
   geom_point(aes(shape=Shape)) +
-  scale_shape_manual(values=c(0, 4, 3, 1))+
-  guides(linetype = FALSE) + 
+  scale_shape_manual(values=c(0, 1, 3, 4))+
+  guides(linetype = FALSE, color=FALSE) + 
   theme_bw() +
   theme(legend.position="top") + 
   labs(shape="", x="Cl", y="Orphan Block Percent Per Round")
