@@ -36,17 +36,20 @@ orphanblock_df <- read.csv("fork_df.csv", header = TRUE)
 
 throughput_df$Shape <-paste(throughput_df$ExpType, ifelse(throughput_df$BlockSize == 1000, "1MB", "500KB" ), sep=" ")
 
+pdf(file = "./bitcoin-throughput.pdf",height = 4)
+
 ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
   geom_line(aes(linetype=Shape,  color=Shape), lwd=0.3)+
   geom_point(aes(shape=Shape)) +
   scale_shape_manual(values=c(0, 1, 3, 4))+
-  guides(linetype = FALSE, color=FALSE) + 
+  guides(linetype = "none", color="none") + 
   theme_bw() +
   theme(legend.position="top") + 
   labs(shape="", x="Cl", y="Median Throughput (KB/Second)")
   
 #kable(throughput_df, n=100)
 
+dev.off()
 ```
 
 
@@ -60,14 +63,18 @@ ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
 
 orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
+pdf(file = "./bitcoin-orphandata.pdf",height = 4)
+
 ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=Shape)) +
   geom_line(aes(linetype=Shape, color=Shape), lwd=0.3)+
   geom_point(aes(shape=Shape)) +
   scale_shape_manual(values=c(0, 1, 3, 4))+
-  guides(linetype = FALSE, color=FALSE) + 
+  guides(linetype = "none", color="none") + 
   theme_bw() +
   theme(legend.position="top") + 
-  labs(shape="", x="Cl", y="Orphan Block Percent Per Round")
+  labs(shape="", x="Cl", y="Useless Data Percent Per Round")
+
+dev.off()
 
 #kable(orphanblock_df)
 
