@@ -59,7 +59,7 @@ throughputDF <- throughputDF %>% mutate(Throughput=if_else(throughputDF$Difficul
 \newpage
 ## Throughput
 
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
+```{r throughput, echo=FALSE, fig.height=4, warning=FALSE}
 
 
 throughputDF <- endOfRound2 %>% group_by( ExpType, Difficulty, BlockSize, CC, NodeID )%>%
@@ -100,7 +100,7 @@ kable(grouped_throughputDF, n=100)
 
 \newpage
 ## Average number of Delivered Blocks per Round (Fork statistics)
-```{r, echo=FALSE, fig.height=4, warning=FALSE}
+```{r orphan_data, echo=FALSE, fig.height=4, warning=FALSE}
 
 
 block_count_df <- blockReceivedDF %>% 
@@ -118,3 +118,32 @@ write.csv(block_count_df,"fork_df.csv", row.names = TRUE)
 kable(block_count_df)
 
 ```
+
+
+
+
+\newpage
+## Latency
+
+```{r latency, echo=FALSE, fig.height=4, warning=FALSE}
+
+
+endOfRound$ElapsedTime <- endOfRound$ElapsedTime / 1000
+
+grouped_endOfRound <- endOfRound %>% 
+                group_by(ExpType,BlockSize, CC ) %>%
+                summarise(
+                  Min = min(ElapsedTime),
+                  Q1 = quantile(ElapsedTime, 0.25),
+                  Median = median(ElapsedTime),
+                  Mean = mean(ElapsedTime),
+                  Q3 = quantile(ElapsedTime, 0.75),
+                  Max = max(ElapsedTime)
+                )
+
+write.csv(grouped_endOfRound,"latency_df.csv", row.names = TRUE)
+
+kable(grouped_endOfRound)
+
+```
+
