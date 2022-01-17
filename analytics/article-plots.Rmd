@@ -77,7 +77,7 @@ dev.off()
 
 orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
-pdf(file = "./bitcoin-orphandata.pdf",height = 4)
+pdf(file = "./bitcoin-discardeddata.pdf",height = 4)
 
 ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=Shape)) +
   geom_line(aes(linetype=Shape, color=Shape), lwd=0.3)+
@@ -86,7 +86,7 @@ ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=Shape)) +
   guides(linetype = "none", color="none") + 
   theme_bw() +
   theme(legend.position="top") + 
-  labs(shape="", x="Cl", y="Useless Data Percent Per Round")
+  labs(shape="", x="Cl", y="Discarded Data Percent Per Round")
 
 dev.off()
 
@@ -104,7 +104,7 @@ dev.off()
 
 latency_df$Shape <-paste(latency_df$ExpType, ifelse(latency_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
-pdf(file = "./bitcoin-latency.pdf",height = 4)
+pdf(file = "./bitcoin-roundcompletion.pdf",height = 4)
 
 ggplot(latency_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
   geom_line(aes(linetype=Shape,  color=Shape), lwd=0.3)+
@@ -113,7 +113,7 @@ ggplot(latency_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
   guides(linetype = "none", color="none") + 
   theme_bw() +
   theme(legend.position="top") + 
-  labs(shape="", x="Cl", y="Median Throughput (KB/Second)")
+  labs(shape="", x="Cl", y="Round Completion Time (Seconds)")
   
 kable(latency_df, n=100)
 
