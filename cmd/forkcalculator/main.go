@@ -3,9 +3,20 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/korkmazkadir/bitcoin/registery"
+)
+
+const (
+	marker         = "RECEIVED"
+	seperator      = "\t"
+	bitcoinpp      = "Bitcoin++"
+	bitcoinRedDiff = "BitcoinReducedDiff"
 )
 
 type ReceivedBlock struct {
@@ -19,21 +30,139 @@ type ReceivedBlock struct {
 
 func main() {
 
-	blocks := parseLogFile("/home/kadir/Desktop/1.log")
-	log.Printf("number of blocks data is %d \n", len(blocks))
+	numberOfExperiments := 24
 
-	countMap := createMap(blocks)
-	log.Println(countMap)
+	statFile := getGlobalStatFile()
 
-	forkCountMap := make(map[int]int)
-	calculateForkCounts(countMap, 0, forkCountMap)
+	for i := 1; i <= numberOfExperiments; i++ {
 
-	log.Println(forkCountMap)
+		configFilePath := fmt.Sprintf("/home/kadir/Desktop/Bitcoin_Fork_Data/experiment-%d/config.json", i)
+		logFilePath := fmt.Sprintf("/home/kadir/Desktop/Bitcoin_Fork_Data/experiment-%d/1.log", i)
+
+		nodeConfig := getConfig(configFilePath)
+		blocks := parseLogFile(logFilePath)
+
+		countMap := createMap(blocks)
+		forkCountMap := calculateForkCounts(countMap)
+		log.Println(forkCountMap)
+
+		appendToLogs(nodeConfig, statFile, forkCountMap)
+
+	}
+
+	if err := statFile.Close(); err != nil {
+		panic(err)
+	}
 
 }
 
-func calculateForkCounts(countMap map[int]int, startRound int, forkCountMap map[int]int) {
+func appendToLogs(config registery.NodeConfig, globalStatFile *os.File, forkCountMap map[int]int) {
 
+	log.Printf("Processing BlockSize: %d, LeaderCount: %d, MiningTime: %f\n", config.BlockSize, config.LeaderCount, config.MiningTime)
+
+	cc := config.LeaderCount
+	expType := bitcoinpp
+	if config.LeaderCount == 1 {
+		expType = bitcoinRedDiff
+		cc = int(float64(600) / config.MiningTime)
+	}
+
+	prefix := fmt.Sprintf("%d\t%d\t%s\t%d\t", config.BlockSize, cc, expType, config.EndRound)
+
+	forkLine := ""
+	for i := 1; i < 6; i++ {
+		forkLine = fmt.Sprintf("%s%d\t", forkLine, forkCountMap[i])
+	}
+	forkLine = strings.TrimSuffix(forkLine, "\t")
+
+	log.Println(forkLine)
+
+	globalStatLine := fmt.Sprintf("%s%s", prefix, forkLine)
+	_, err := fmt.Fprintln(globalStatFile, globalStatLine)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getGlobalStatFile() *os.File {
+
+	file, err := os.OpenFile("/home/kadir/Desktop/Bitcoin_Fork_Data/forks.stats", os.O_WRONLY|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0755)
+	if err != nil {
+		panic(err)
+	}
+
+	return file
+}
+
+func getConfig(path string) registery.NodeConfig {
+
+	config := registery.NodeConfig{}
+
+	file, err := os.Open(path)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	byteValue, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(byteValue, &config)
+	if err != nil {
+		panic(err)
+	}
+
+	return config
+}
+
+func calculateForkCounts(countMap map[int]int) map[int]int {
+
+	forkCountsMap := make(map[int]int)
+
+	// initializes count maps
+	for i := 1; i < 6; i++ {
+		forkCountsMap[i] = 0
+	}
+
+	currentRound := 0
+	forked := false
+	forkLength := 0
+
+	count, ok := countMap[currentRound]
+
+	forkStartRound := 0
+
+	for ok {
+
+		if count == 1 && forked {
+			log.Printf("Fork found. Start Round:\t%d End Round:\t%d Lenfgth:\t%d\n", forkStartRound, currentRound, forkLength)
+
+			forkCountsMap[forkLength] = forkCountsMap[forkLength] + 1
+			forked = false
+			forkLength = 0
+		}
+
+		if count > 1 && !forked {
+			forked = true
+			forkStartRound = currentRound
+		}
+
+		if forked {
+			forkLength++
+		}
+
+		currentRound++
+		count, ok = countMap[currentRound]
+
+		if currentRound == 50 {
+			//break
+		}
+
+	}
+
+	return forkCountsMap
 }
 
 func createMap(blocks []ReceivedBlock) map[int]int {
@@ -56,11 +185,6 @@ func createMap(blocks []ReceivedBlock) map[int]int {
 
 	return countMap
 }
-
-const (
-	marker    = "RECEIVED"
-	seperator = "\t"
-)
 
 func parseLogFile(filePath string) []ReceivedBlock {
 	file, err := os.Open(filePath)

@@ -28,3 +28,6 @@
 scripts/artifacts/*
 scripts/artifacts/config.json
 
+
+cmd/hostfilecreator/tails.sh
+
