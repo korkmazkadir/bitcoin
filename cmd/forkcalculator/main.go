@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"strings"
 
@@ -69,11 +70,32 @@ func appendToLogs(config registery.NodeConfig, globalStatFile *os.File, forkCoun
 
 	prefix := fmt.Sprintf("%d\t%d\t%s\t%d\t", config.BlockSize, cc, expType, config.EndRound)
 
+	/////// Calculates maxForkLength & avgForkLength
+	counter := 0
+	sum := 0
+	maxForkLength := 0
+	for i := 1; i < 6; i++ {
+		f := forkCountMap[i]
+		if f > 0 {
+			sum += i * forkCountMap[i]
+			counter += forkCountMap[i]
+			maxForkLength = i
+		}
+	}
+	avgForkLength := float64(sum) / float64(counter)
+
+	if math.IsNaN(avgForkLength) {
+		avgForkLength = 0
+	}
+
+	////////////////////////
+
 	forkLine := ""
 	for i := 1; i < 6; i++ {
 		forkLine = fmt.Sprintf("%s%d\t", forkLine, forkCountMap[i])
 	}
-	forkLine = strings.TrimSuffix(forkLine, "\t")
+	//forkLine = strings.TrimSuffix(forkLine, "\t")
+	forkLine = fmt.Sprintf("%s%f\t%d", forkLine, avgForkLength, maxForkLength)
 
 	log.Println(forkLine)
 

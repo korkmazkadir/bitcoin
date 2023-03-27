@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/korkmazkadir/bitcoin/registery"
@@ -63,6 +64,7 @@ func main() {
 
 }
 
+/*
 func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *os.File) {
 
 	log.Printf("Processing BlockSize: %d, LeaderCount: %d, MiningTime: %f\n", config.BlockSize, config.LeaderCount, config.MiningTime)
@@ -77,6 +79,28 @@ func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *o
 		if err != nil {
 			panic(err)
 		}
+	}
+
+}*/
+
+func appendToLogs(config registery.NodeConfig, stats *os.File, globalStatFile *os.File) {
+
+	log.Printf("Processing BlockSize: %d, LeaderCount: %d, MiningTime: %f\n", config.BlockSize, config.LeaderCount, config.MiningTime)
+
+	scanner := bufio.NewScanner(stats)
+	prefix := fmt.Sprintf("%d\t%d\t%f\t", config.BlockSize, config.LeaderCount, config.MiningTime)
+
+	var sb strings.Builder
+	for scanner.Scan() {
+
+		statLine := scanner.Text()
+		globalStatLine := fmt.Sprintf("%s%s\n", prefix, statLine)
+		sb.WriteString(globalStatLine)
+	}
+
+	_, err := fmt.Fprint(globalStatFile, sb.String())
+	if err != nil {
+		panic(err)
 	}
 
 }

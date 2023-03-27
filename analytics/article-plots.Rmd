@@ -2,20 +2,24 @@
 title: "Plots for The Article"
 author: "Kadir Korkmaz"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: pdf_document
-knit: (function(inputFile, encoding) { 
+output: 
+ pdf_document:
+  fig_width: 8
+knit: (function(inputFile, ...) { 
+
       workingDir <- '/home/kadir/Desktop/Bitcoin_1MB_Experiments';
       rmarkdown::render(inputFile,
-                        encoding=encoding,
                         knit_root_dir = workingDir,
-                        output_file=file.path(workingDir, 'remove.pdf')) })
+                        output_file=file.path(workingDir, 'remove.pdf')
+                        ) 
+      })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r data, include=FALSE}
+```{r data,  include=FALSE}
 library(ggplot2)
 library(knitr)
 
@@ -25,18 +29,10 @@ throughput_df <- read.csv("throughput_df.csv", header = TRUE)
 orphanblock_df <- read.csv("fork_df.csv", header = TRUE)
 latency_df <- read.csv("latency_df.csv", header = TRUE)
 
-forkFrequency_df <- read.csv("forks.tsv", header = FALSE, sep = "\t")
-colnames(forkFrequency_df)[1] = "BlockSize"
-colnames(forkFrequency_df)[2] = "CC"
-colnames(forkFrequency_df)[3] = "ExpType"
-colnames(forkFrequency_df)[4] = "RoundCount"
-colnames(forkFrequency_df)[5] = "L1"
-colnames(forkFrequency_df)[6] = "L2"
-colnames(forkFrequency_df)[7] = "L3"
-colnames(forkFrequency_df)[8] = "L4"
-colnames(forkFrequency_df)[9] = "L5"
 
-
+throughput_df$ExpType[throughput_df$ExpType=="BitcoinReducedDiff"] <- "Bitcoin"
+orphanblock_df$ExpType[orphanblock_df$ExpType=="BitcoinReducedDiff"] <- "Bitcoin"
+latency_df$ExpType[latency_df$ExpType=="BitcoinReducedDiff"] <- "Bitcoin"
 
 ```
 
@@ -46,7 +42,7 @@ colnames(forkFrequency_df)[9] = "L5"
 \
 \
 \
-```{r throughput, echo=FALSE, fig.height=4, warning=FALSE}
+```{r throughput, echo=FALSE,  warning=FALSE}
 
 throughput_df$Shape <-paste(throughput_df$ExpType, ifelse(throughput_df$BlockSize == 1000, "1MB", "500KB" ), sep=" ")
 
@@ -67,12 +63,28 @@ dev.off()
 ```
 
 
+```{r throughput2, echo=FALSE, warning=FALSE}
+#Joachim requested to make all same
+pdf(file = "./bitcoin-throughput-2.pdf",height = 4, width=6)
+
+ggplot(throughput_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
+  geom_line(aes(linetype=Shape,  color=Shape), lwd=0.3)+
+  geom_point() +
+  theme_bw() +
+  theme(legend.position="top") + 
+  labs(color="", linetype="", x="Cl", y="Median Throughput (KB/Second)")
+  
+#kable(throughput_df, n=100)
+
+dev.off()
+```
+
 \newpage
 ## Orphan Block Plot
 \
 \
 \
-```{r  orphanblocks, echo=FALSE, fig.height=4, warning=FALSE}
+```{r  orphanblocks, echo=FALSE,  warning=FALSE}
 
 
 orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
@@ -94,13 +106,33 @@ dev.off()
 
 ```
 
+```{r  orphanblocks-2, echo=FALSE,  warning=FALSE}
+
+
+orphanblock_df$Shape <-paste(orphanblock_df$ExpType, ifelse(orphanblock_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
+
+pdf(file = "./bitcoin-discardeddata-2.pdf",height = 4, width=6)
+
+ggplot(orphanblock_df, aes(x=as.factor(CC), y=ExtraCostPercent, group=Shape)) +
+  geom_line(aes(linetype=Shape, color=Shape), lwd=0.3)+
+  geom_point() +
+  theme_bw() +
+  theme(legend.position="top") + 
+  labs(color="", linetype="", x="Cl", y="Discarded Data Percent Per Round")
+
+dev.off()
+
+#kable(orphanblock_df)
+
+```
+
 
 \newpage
 ## Latency Plot
 \
 \
 \
-```{r latency, echo=FALSE, fig.height=4, warning=FALSE}
+```{r latency, echo=FALSE,  warning=FALSE}
 
 latency_df$Shape <-paste(latency_df$ExpType, ifelse(latency_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
@@ -120,18 +152,22 @@ kable(latency_df, n=100)
 dev.off()
 ```
 
-\newpage
-## Fork Distribution
-\
-\
-\
-```{r  forkdistribution, echo=FALSE, fig.height=4, warning=FALSE}
 
-kable(forkFrequency_df)
+```{r latency-2, echo=FALSE,  warning=FALSE}
 
-forkFrequency_df$Shape <-paste(forkFrequency_df$ExpType, ifelse(forkFrequency_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
+latency_df$Shape <-paste(latency_df$ExpType, ifelse(latency_df$BlockSize == 1000000, "1MB", "500KB" ), sep=" ")
 
+pdf(file = "./bitcoin-roundcompletion-2.pdf",height = 4, width=6)
 
-#kable(orphanblock_df)
+ggplot(latency_df, aes(x=as.factor(CC), y=Median, group=Shape)) +
+  geom_line(aes(linetype=Shape,  color=Shape), lwd=0.3)+
+  geom_point() +
+  theme_bw() +
+  theme(legend.position="top") + 
+  labs(color="", linetype="", x="Cl", y="Round Completion Time (Seconds)")
+  
+kable(latency_df, n=100)
 
+dev.off()
 ```
+
